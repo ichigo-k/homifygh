@@ -21,6 +21,9 @@ export const auth = betterAuth({
       firstName: { type: "string", required: false },
       lastName: { type: "string", required: false },
       onboardingComplete: { type: "boolean", defaultValue: false, input: false },
+      locationLabel: { type: "string", required: false },
+      lat: { type: "number", required: false },
+      lng: { type: "number", required: false },
     },
   },
   plugins: [

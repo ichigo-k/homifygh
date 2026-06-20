@@ -3,9 +3,7 @@
  * Usage:  npx tsx scripts/make-admin.ts someone@example.com
  */
 import "dotenv/config"
-import { PrismaClient } from "@prisma/client"
-
-const prisma = new PrismaClient()
+import { prisma } from "../src/lib/prisma"
 
 async function main() {
   const email = process.argv[2]
