@@ -66,7 +66,7 @@ export default function SignInPage() {
             label="Password"
             type="password"
             icon={Lock}
-            autoComplete="current-password"
+            autoComplete="off"
             value={form.password}
             onChange={(e) => setForm({ ...form, password: e.target.value })}
             required
