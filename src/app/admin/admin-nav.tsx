@@ -2,7 +2,7 @@
 
 import Link from "next/link"
 import { usePathname } from "next/navigation"
-import { LayoutDashboard, Users, ShieldCheck, User, LogOut } from "lucide-react"
+import { LayoutDashboard, Users, ShieldCheck, LogOut } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { signOut } from "@/lib/auth-client"
 

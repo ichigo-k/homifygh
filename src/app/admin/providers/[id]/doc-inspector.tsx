@@ -2,7 +2,7 @@
 
 import { useState } from "react"
 import Image from "next/image"
-import { Eye, ExternalLink, ShieldCheck, UserCheck } from "lucide-react"
+import { ExternalLink } from "lucide-react"
 
 interface Document {
   label: string

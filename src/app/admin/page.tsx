@@ -1,6 +1,6 @@
 import Link from "next/link"
 import { prisma } from "@/lib/prisma"
-import { Clock, CheckCircle2, XCircle, ArrowRight, ShieldCheck, UserCheck, AlertTriangle } from "lucide-react"
+import { Clock, CheckCircle2, XCircle, ArrowRight, ShieldCheck } from "lucide-react"
 
 export default async function AdminOverviewPage() {
   const [pending, approved, rejected] = await Promise.all([

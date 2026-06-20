@@ -4,7 +4,7 @@ import { prisma } from "@/lib/prisma"
 import { Badge } from "@/components/ui/badge"
 import { ReviewActions } from "./review-actions"
 import { DocInspector } from "./doc-inspector"
-import { ArrowLeft, MapPin, Mail, Sparkles, User, FileText, Calendar, ShieldCheck, CheckCircle2, XCircle } from "lucide-react"
+import { ArrowLeft, MapPin, Sparkles, User, FileText, Calendar, ShieldCheck } from "lucide-react"
 import { cn } from "@/lib/utils"
 
 export default async function ProviderReviewPage({
@@ -177,7 +177,7 @@ export default async function ProviderReviewPage({
 
 interface DetailProps {
   label: string
-  icon: any
+  icon: React.ElementType
   value?: string
   children?: React.ReactNode
 }

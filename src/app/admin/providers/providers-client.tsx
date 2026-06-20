@@ -2,7 +2,7 @@
 
 import { useState } from "react"
 import Link from "next/link"
-import { Search, ChevronRight, MapPin, Sparkles, User, BadgeCheck, AlertCircle } from "lucide-react"
+import { Search, ChevronRight, MapPin, User } from "lucide-react"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
@@ -33,11 +33,6 @@ export function ProvidersClient({ providers, activeStatus }: ProvidersClientProp
     return searchStr.includes(query.toLowerCase())
   })
 
-  const statusIcons: Record<string, any> = {
-    PENDING: AlertCircle,
-    APPROVED: BadgeCheck,
-    REJECTED: AlertCircle,
-  }
 
   return (
     <div className="space-y-6">
