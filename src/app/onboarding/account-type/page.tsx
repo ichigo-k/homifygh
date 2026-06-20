@@ -1,7 +1,8 @@
 import Link from "next/link"
 import { redirect } from "next/navigation"
 import { requireUser, homeFor } from "@/lib/session"
-import { Search, Wrench, ArrowRight } from "lucide-react"
+import { ArrowRight } from "lucide-react"
+import { CustomerIllustration, ProviderIllustration } from "@/components/illustrations"
 
 export default async function AccountTypePage() {
   const user = await requireUser()
@@ -11,17 +12,17 @@ export default async function AccountTypePage() {
   const options = [
     {
       href: "/onboarding/customer",
-      icon: Search,
       title: "I need a service",
       desc: "Book trusted plumbers, electricians, cleaners and more near you.",
       tag: "Customer",
+      art: CustomerIllustration,
     },
     {
       href: "/onboarding/provider/kyc",
-      icon: Wrench,
       title: "I provide a service",
       desc: "Get discovered, accept bookings, and grow your business on Homify.",
       tag: "Provider",
+      art: ProviderIllustration,
     },
   ]
 
@@ -38,21 +39,19 @@ export default async function AccountTypePage() {
       </div>
 
       <div className="mt-8 grid gap-4 sm:grid-cols-2">
-        {options.map(({ href, icon: Icon, title, desc, tag }) => (
+        {options.map(({ href, title, desc, tag, art: Art }) => (
           <Link
             key={href}
             href={href}
             className="group relative flex flex-col overflow-hidden rounded-2xl border border-border bg-card transition-all duration-300 hover:-translate-y-1 hover:border-primary/50 hover:shadow-[var(--shadow-lg)]"
           >
-            {/* Icon band */}
-            <div className="flex items-center justify-center bg-accent/60 py-10 transition-colors duration-300 group-hover:bg-primary/10">
-              <span className="flex h-16 w-16 items-center justify-center rounded-2xl bg-background shadow-[var(--shadow-sm)] transition-all duration-300 group-hover:scale-110 group-hover:shadow-[var(--shadow-md)]">
-                <Icon className="h-8 w-8 text-primary" />
-              </span>
+            {/* Illustration */}
+            <div className="flex justify-center px-6 pt-6">
+              <Art className="h-32 w-auto transition-transform duration-300 group-hover:scale-105" />
             </div>
 
             {/* Content */}
-            <div className="flex flex-1 flex-col p-6">
+            <div className="flex flex-1 flex-col px-6 pb-6 pt-4">
               <span className="inline-flex w-fit items-center rounded-full bg-accent px-2.5 py-0.5 text-[11px] font-semibold uppercase tracking-wide text-primary">
                 {tag}
               </span>
