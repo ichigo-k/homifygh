@@ -1,0 +1,181 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// Better Auth core tables
+model User {
+  id            String   @id @default(cuid())
+  name          String
+  firstName     String?
+  lastName      String?
+  email         String   @unique
+  emailVerified Boolean  @default(false)
+  image         String?
+  phone         String?
+  role          Role     @default(CUSTOMER)
+
+  // Onboarding
+  onboardingComplete Boolean @default(false)
+
+  // Customer profile
+  lat           Float?
+  lng           Float?
+  locationLabel String?
+  interests     Category[] @default([])
+
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  sessions          Session[]
+  accounts          Account[]
+  provider          Provider?
+  bookings          Booking[]
+  reviews           Review[]
+  reviewedProviders Provider[] @relation("ProviderReviewer")
+}
+
+model Session {
+  id        String   @id @default(cuid())
+  userId    String
+  token     String   @unique
+  expiresAt DateTime
+  ipAddress String?
+  userAgent String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model Account {
+  id           String    @id @default(cuid())
+  userId       String
+  accountId    String
+  providerId   String
+  accessToken  String?
+  refreshToken String?
+  idToken      String?
+  expiresAt    DateTime?
+  password     String?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model Verification {
+  id         String   @id @default(cuid())
+  identifier String
+  value      String
+  expiresAt  DateTime
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+}
+
+// App-specific tables
+model Provider {
+  id              String   @id @default(cuid())
+  userId          String   @unique
+  bio             String?
+  coverImageUrl   String?
+  category        Category
+  lat             Float?
+  lng             Float?
+  locationLabel   String?
+  serviceRadiusKm Float    @default(10)
+  isVerified      Boolean  @default(false)
+  avgRating       Float    @default(0)
+  totalReviews    Int      @default(0)
+
+  // KYC
+  status            ProviderStatus @default(PENDING)
+  ghanaCardNumber   String?
+  ghanaCardFrontUrl String?
+  ghanaCardBackUrl  String?
+  selfieUrl         String?
+  idDocumentUrl     String?
+
+  // Review trail
+  reviewedById String?
+  reviewNotes  String?
+  reviewedAt   DateTime?
+
+  // Store setup
+  storeName          String?
+  storeSlug          String?  @unique
+  storeSetupComplete Boolean  @default(false)
+
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  user       User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  reviewedBy User?     @relation("ProviderReviewer", fields: [reviewedById], references: [id])
+  bookings   Booking[]
+  reviews    Review[]
+}
+
+model Booking {
+  id          String        @id @default(cuid())
+  customerId  String
+  providerId  String
+  category    Category
+  status      BookingStatus @default(PENDING)
+  scheduledAt DateTime
+  address     String
+  notes       String?
+  amount      Float?
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+
+  customer User     @relation(fields: [customerId], references: [id])
+  provider Provider @relation(fields: [providerId], references: [id])
+  review   Review?
+}
+
+model Review {
+  id         String   @id @default(cuid())
+  bookingId  String   @unique
+  customerId String
+  providerId String
+  rating     Int
+  comment    String?
+  createdAt  DateTime @default(now())
+
+  booking  Booking  @relation(fields: [bookingId], references: [id])
+  customer User     @relation(fields: [customerId], references: [id])
+  provider Provider @relation(fields: [providerId], references: [id])
+}
+
+enum Role {
+  CUSTOMER
+  PROVIDER
+  ADMIN
+}
+
+enum ProviderStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+enum Category {
+  PLUMBER
+  ELECTRICIAN
+  CARPENTER
+  AC_TECHNICIAN
+  CLEANER
+  PAINTER
+  MASON
+}
+
+enum BookingStatus {
+  PENDING
+  ACCEPTED
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
+}
