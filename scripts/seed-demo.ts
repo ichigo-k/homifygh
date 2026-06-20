@@ -39,10 +39,10 @@ async function main() {
 
   // Wipe prior demo data (providers whose user email ends with @homify.test)
   const demoUsers = await prisma.user.findMany({ where: { email: { endsWith: "@homify.test" } }, select: { id: true } })
-  const demoUserIds = demoUsers.map((u) => u.id)
+  const demoUserIds = demoUsers.map((u: { id: string }) => u.id)
   if (demoUserIds.length) {
     const demoProviders = await prisma.provider.findMany({ where: { userId: { in: demoUserIds } }, select: { id: true } })
-    const demoProviderIds = demoProviders.map((p) => p.id)
+    const demoProviderIds = demoProviders.map((p: { id: string }) => p.id)
     await prisma.review.deleteMany({ where: { providerId: { in: demoProviderIds } } })
     await prisma.booking.deleteMany({ where: { providerId: { in: demoProviderIds } } })
     await prisma.provider.deleteMany({ where: { userId: { in: demoUserIds } } })
@@ -50,7 +50,7 @@ async function main() {
   }
 
   // Create providers
-  const providers = []
+  const providers: { id: string; category: Category; displayName: string; [key: string]: unknown }[] = []
   for (const p of PROVIDERS) {
     const u = await prisma.user.create({
       data: {
