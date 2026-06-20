@@ -43,7 +43,7 @@ export default async function SearchPage({
     },
   })
 
-  const providers: SearchProvider[] = rows.map((p) => ({
+  const providers: SearchProvider[] = rows.map((p: (typeof rows)[number]) => ({
     id: p.id,
     name: p.storeName ?? p.user.name,
     bio: p.bio,

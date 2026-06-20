@@ -19,7 +19,7 @@ export default async function BookingsPage() {
     },
   })
 
-  const bookings: BookingItem[] = rows.map((b) => ({
+  const bookings: BookingItem[] = rows.map((b: (typeof rows)[number]) => ({
     id: b.id,
     category: b.category,
     status: b.status,
