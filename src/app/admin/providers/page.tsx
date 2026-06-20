@@ -2,7 +2,7 @@ import Link from "next/link"
 import { prisma } from "@/lib/prisma"
 import { ProvidersClient } from "./providers-client"
 import { ShieldCheck, Clock, CheckCircle2, XCircle } from "lucide-react"
-import type { ProviderStatus } from "@prisma/client"
+type ProviderStatus = "PENDING" | "APPROVED" | "REJECTED"
 
 export default async function ProviderQueuePage({
   searchParams,

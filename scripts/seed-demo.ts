@@ -5,7 +5,8 @@
  * Run: npx tsx --env-file=.env scripts/seed-demo.ts
  */
 import { prisma } from "../src/lib/prisma"
-import type { Category, BookingStatus } from "@prisma/client"
+type Category = "PLUMBER" | "ELECTRICIAN" | "CARPENTER" | "AC_TECHNICIAN" | "CLEANER" | "PAINTER" | "MASON"
+type BookingStatus = "PENDING" | "ACCEPTED" | "IN_PROGRESS" | "COMPLETED" | "CANCELLED"
 
 const PROVIDERS: {
   name: string
