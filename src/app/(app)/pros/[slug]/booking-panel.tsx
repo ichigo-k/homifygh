@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from "react"
 import Link from "next/link"
-import { ArrowRight, Calendar, CheckCircle2, Loader2, MapPin, Clock } from "lucide-react"
+import { ArrowRight, Calendar, CheckCircle2, Loader2, MapPin } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { createBooking } from "../../search/actions"
 

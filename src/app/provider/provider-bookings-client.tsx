@@ -2,8 +2,8 @@
 
 import { useMemo, useState, useTransition } from "react"
 import {
-  CalendarDays, Check, CheckCircle2, ChevronRight, Clock3, Loader2,
-  MapPin, Play, Search, Sparkles, UserRound, X, Zap,
+  CalendarDays, Check, CheckCircle2, ChevronRight, Loader2,
+  MapPin, Play, Search, Sparkles, UserRound, X,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { CATEGORIES, type CategorySlug } from "@/lib/categories"

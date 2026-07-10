@@ -6,148 +6,229 @@ datasource db {
   provider = "postgresql"
 }
 
-// Better Auth core tables
 model User {
-  id            String   @id @default(cuid())
-  name          String
-  firstName     String?
-  lastName      String?
-  email         String   @unique
-  emailVerified Boolean  @default(false)
-  image         String?
-  phone         String?
-  role          Role     @default(CUSTOMER)
-
-  // Onboarding
+  id String @id @default(cuid())
+  name String
+  firstName String?
+  lastName String?
+  email String @unique
+  emailVerified Boolean @default(false)
+  image String?
+  phone String?
+  role Role @default(CUSTOMER)
   onboardingComplete Boolean @default(false)
-
-  // Customer profile
-  lat           Float?
-  lng           Float?
+  lat Float?
+  lng Float?
   locationLabel String?
-  interests     Category[] @default([])
-
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
-
-  sessions          Session[]
-  accounts          Account[]
-  provider          Provider?
-  bookings          Booking[]
-  reviews           Review[]
+  interests Category[] @default([])
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  sessions Session[]
+  accounts Account[]
+  provider Provider?
+  bookings Booking[]
+  reviews Review[]
   reviewedProviders Provider[] @relation("ProviderReviewer")
+  savedProviders SavedProvider[]
+  notifications Notification[]
+  disputes Dispute[] @relation("DisputeCustomer")
+  auditLogs AuditLog[] @relation("AuditActor")
 }
 
 model Session {
-  id        String   @id @default(cuid())
-  userId    String
-  token     String   @unique
+  id String @id @default(cuid())
+  userId String
+  token String @unique
   expiresAt DateTime
   ipAddress String?
   userAgent String?
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
-
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
 model Account {
-  id           String    @id @default(cuid())
-  userId       String
-  accountId    String
-  providerId   String
-  accessToken  String?
+  id String @id @default(cuid())
+  userId String
+  accountId String
+  providerId String
+  accessToken String?
   refreshToken String?
-  idToken      String?
-  expiresAt    DateTime?
-  password     String?
-  createdAt    DateTime  @default(now())
-  updatedAt    DateTime  @updatedAt
-
+  idToken String?
+  expiresAt DateTime?
+  password String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
 model Verification {
-  id         String   @id @default(cuid())
+  id String @id @default(cuid())
   identifier String
-  value      String
-  expiresAt  DateTime
-  createdAt  DateTime @default(now())
-  updatedAt  DateTime @updatedAt
+  value String
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
-// App-specific tables
 model Provider {
-  id              String   @id @default(cuid())
-  userId          String   @unique
-  bio             String?
-  coverImageUrl   String?
-  category        Category
-  lat             Float?
-  lng             Float?
-  locationLabel   String?
-  serviceRadiusKm Float    @default(10)
-  isVerified      Boolean  @default(false)
-  avgRating       Float    @default(0)
-  totalReviews    Int      @default(0)
-
-  // KYC
-  status            ProviderStatus @default(PENDING)
-  ghanaCardNumber   String?
+  id String @id @default(cuid())
+  userId String @unique
+  bio String?
+  coverImageUrl String?
+  category Category
+  lat Float?
+  lng Float?
+  locationLabel String?
+  serviceRadiusKm Float @default(10)
+  isVerified Boolean @default(false)
+  avgRating Float @default(0)
+  totalReviews Int @default(0)
+  status ProviderStatus @default(PENDING)
+  ghanaCardNumber String?
   ghanaCardFrontUrl String?
-  ghanaCardBackUrl  String?
-  selfieUrl         String?
-  idDocumentUrl     String?
-
-  // Review trail
+  ghanaCardBackUrl String?
+  selfieUrl String?
+  idDocumentUrl String?
   reviewedById String?
-  reviewNotes  String?
-  reviewedAt   DateTime?
+  reviewNotes String?
+  reviewedAt DateTime?
+  storeName String?
+  storeSlug String? @unique
+  storeSetupComplete Boolean @default(false)
+  bookingLeadHours Int @default(2)
+  workingDays Int[] @default([1, 2, 3, 4, 5, 6])
+  workStart String @default("08:00")
+  workEnd String @default("18:00")
+  unavailableDates String[] @default([])
+  acceptsWhatsApp Boolean @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  reviewedBy User? @relation("ProviderReviewer", fields: [reviewedById], references: [id])
+  bookings Booking[]
+  reviews Review[]
+  services ServiceOffering[]
+  portfolio PortfolioImage[]
+  savedBy SavedProvider[]
+  disputes Dispute[]
+}
 
-  // Store setup
-  storeName          String?
-  storeSlug          String?  @unique
-  storeSetupComplete Boolean  @default(false)
+model ServiceOffering {
+  id String @id @default(cuid())
+  providerId String
+  name String
+  description String?
+  startingPrice Float?
+  active Boolean @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  provider Provider @relation(fields: [providerId], references: [id], onDelete: Cascade)
+  @@index([providerId, active])
+}
 
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
+model PortfolioImage {
+  id String @id @default(cuid())
+  providerId String
+  imageUrl String
+  caption String?
+  sortOrder Int @default(0)
+  createdAt DateTime @default(now())
+  provider Provider @relation(fields: [providerId], references: [id], onDelete: Cascade)
+  @@index([providerId, sortOrder])
+}
 
-  user       User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-  reviewedBy User?     @relation("ProviderReviewer", fields: [reviewedById], references: [id])
-  bookings   Booking[]
-  reviews    Review[]
+model SavedProvider {
+  id String @id @default(cuid())
+  customerId String
+  providerId String
+  createdAt DateTime @default(now())
+  customer User @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  provider Provider @relation(fields: [providerId], references: [id], onDelete: Cascade)
+  @@unique([customerId, providerId])
+  @@index([customerId, createdAt])
 }
 
 model Booking {
-  id          String        @id @default(cuid())
-  customerId  String
-  providerId  String
-  category    Category
-  status      BookingStatus @default(PENDING)
+  id String @id @default(cuid())
+  customerId String
+  providerId String
+  category Category
+  status BookingStatus @default(PENDING)
   scheduledAt DateTime
-  address     String
-  notes       String?
-  amount      Float?
-  createdAt   DateTime      @default(now())
-  updatedAt   DateTime      @updatedAt
-
-  customer User     @relation(fields: [customerId], references: [id])
+  address String
+  notes String?
+  amount Float?
+  depositAmount Float?
+  paymentStatus PaymentStatus @default(UNPAID)
+  paymentMethod String?
+  paymentReference String? @unique
+  paidAt DateTime?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  customer User @relation(fields: [customerId], references: [id])
   provider Provider @relation(fields: [providerId], references: [id])
-  review   Review?
+  review Review?
+  dispute Dispute?
+  @@index([providerId, scheduledAt])
+  @@index([customerId, createdAt])
 }
 
 model Review {
-  id         String   @id @default(cuid())
-  bookingId  String   @unique
+  id String @id @default(cuid())
+  bookingId String @unique
   customerId String
   providerId String
-  rating     Int
-  comment    String?
-  createdAt  DateTime @default(now())
-
-  booking  Booking  @relation(fields: [bookingId], references: [id])
-  customer User     @relation(fields: [customerId], references: [id])
+  rating Int
+  comment String?
+  createdAt DateTime @default(now())
+  booking Booking @relation(fields: [bookingId], references: [id])
+  customer User @relation(fields: [customerId], references: [id])
   provider Provider @relation(fields: [providerId], references: [id])
+}
+
+model Notification {
+  id String @id @default(cuid())
+  userId String
+  type NotificationType
+  title String
+  message String
+  href String?
+  readAt DateTime?
+  createdAt DateTime @default(now())
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  @@index([userId, readAt, createdAt])
+}
+
+model Dispute {
+  id String @id @default(cuid())
+  bookingId String @unique
+  customerId String
+  providerId String
+  reason String
+  details String
+  status DisputeStatus @default(OPEN)
+  resolution String?
+  resolvedAt DateTime?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  booking Booking @relation(fields: [bookingId], references: [id])
+  customer User @relation("DisputeCustomer", fields: [customerId], references: [id])
+  provider Provider @relation(fields: [providerId], references: [id])
+  @@index([status, createdAt])
+}
+
+model AuditLog {
+  id String @id @default(cuid())
+  actorId String?
+  action String
+  entityType String
+  entityId String
+  metadata Json?
+  createdAt DateTime @default(now())
+  actor User? @relation("AuditActor", fields: [actorId], references: [id], onDelete: SetNull)
+  @@index([entityType, entityId, createdAt])
+  @@index([actorId, createdAt])
 }
 
 enum Role {
@@ -155,13 +236,11 @@ enum Role {
   PROVIDER
   ADMIN
 }
-
 enum ProviderStatus {
   PENDING
   APPROVED
   REJECTED
 }
-
 enum Category {
   PLUMBER
   ELECTRICIAN
@@ -171,11 +250,28 @@ enum Category {
   PAINTER
   MASON
 }
-
 enum BookingStatus {
   PENDING
   ACCEPTED
   IN_PROGRESS
   COMPLETED
   CANCELLED
+}
+enum PaymentStatus {
+  UNPAID
+  DEPOSIT_PAID
+  PAID
+  REFUNDED
+}
+enum NotificationType {
+  BOOKING
+  PAYMENT
+  REVIEW
+  SYSTEM
+}
+enum DisputeStatus {
+  OPEN
+  REVIEWING
+  RESOLVED
+  DISMISSED
 }

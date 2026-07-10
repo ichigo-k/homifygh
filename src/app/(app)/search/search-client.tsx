@@ -51,6 +51,7 @@ export function SearchClient({
   initialQuery: string
   defaultAddress: string
 }) {
+  void defaultAddress
   const [query, setQuery] = useState(initialQuery)
   const [cat, setCat] = useState<CategorySlug | "ALL">(initialCategory)
   const [sort, setSort] = useState<Sort>("rating")

@@ -3,50 +3,5 @@ import { ArrowLeft, Mail, ShieldCheck } from "lucide-react"
 import { Button } from "@/components/ui/button"
 
 export default function ForgotPasswordPage() {
-  return (
-    <div className="mx-auto flex min-h-[calc(100vh-4rem)] w-full max-w-2xl items-center px-4 py-12 sm:px-6">
-      <div className="w-full rounded-3xl border border-border bg-card p-8 shadow-sm sm:p-10">
-        <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
-          <ShieldCheck className="h-4 w-4" />
-          Account access
-        </div>
-
-        <h1 className="mt-4 text-3xl font-extrabold tracking-tight sm:text-4xl">Reset password</h1>
-        <p className="mt-3 max-w-xl text-sm leading-6 text-muted-foreground sm:text-base">
-          Password reset is not wired yet in this build. Use email verification to sign in, or contact support if you need help accessing your account.
-        </p>
-
-        <div className="mt-8 grid gap-4 sm:grid-cols-2">
-          <div className="rounded-2xl border border-border bg-background p-4">
-            <div className="flex items-center gap-2 text-sm font-semibold">
-              <Mail className="h-4 w-4 text-primary" />
-              Sign-in help
-            </div>
-            <p className="mt-2 text-sm text-muted-foreground">
-              Check your email for the verification code if you just signed up.
-            </p>
-          </div>
-
-          <div className="rounded-2xl border border-border bg-background p-4">
-            <div className="flex items-center gap-2 text-sm font-semibold">
-              <ShieldCheck className="h-4 w-4 text-primary" />
-              Support
-            </div>
-            <p className="mt-2 text-sm text-muted-foreground">
-              If you cannot access your account, reach out to the team for manual assistance.
-            </p>
-          </div>
-        </div>
-
-        <div className="mt-8 flex flex-wrap gap-3">
-          <Button asChild className="rounded-xl">
-            <Link href="/sign-in">Back to sign in</Link>
-          </Button>
-          <Button asChild variant="outline" className="rounded-xl">
-            <Link href="/sign-up">Create an account</Link>
-          </Button>
-        </div>
-      </div>
-    </div>
-  )
+  return <div className="mx-auto flex min-h-[calc(100vh-4rem)] w-full max-w-2xl items-center px-4 py-12 sm:px-6"><div className="w-full rounded-3xl border border-border bg-card p-8 shadow-sm sm:p-10"><div className="flex items-center gap-2 text-sm font-medium text-muted-foreground"><ShieldCheck className="h-4 w-4" />Account access</div><h1 className="mt-4 text-3xl font-extrabold tracking-tight sm:text-4xl">Reset password</h1><p className="mt-3 max-w-xl text-sm leading-6 text-muted-foreground sm:text-base">Password reset is not wired yet in this build. Use email verification to sign in, or contact support if you need help accessing your account.</p><div className="mt-8 grid gap-4 sm:grid-cols-2"><div className="rounded-2xl border border-border bg-background p-4"><div className="flex items-center gap-2 text-sm font-semibold"><Mail className="h-4 w-4 text-primary" />Sign-in help</div><p className="mt-2 text-sm text-muted-foreground">Check your email for the verification code if you just signed up.</p></div><div className="rounded-2xl border border-border bg-background p-4"><div className="flex items-center gap-2 text-sm font-semibold"><ShieldCheck className="h-4 w-4 text-primary" />Support</div><p className="mt-2 text-sm text-muted-foreground">If you cannot access your account, reach out to the team for manual assistance.</p></div></div><div className="mt-8 flex flex-wrap gap-3"><Button className="rounded-xl" render={<Link href="/sign-in" />}><ArrowLeft className="mr-1 h-4 w-4" />Back to sign in</Button><Button variant="outline" className="rounded-xl" render={<Link href="/sign-up" />}>Create an account</Button></div></div></div>
 }

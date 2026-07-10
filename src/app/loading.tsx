@@ -1,0 +1,1 @@
+export default function Loading() { return <div className="mx-auto flex min-h-[50vh] max-w-5xl items-center justify-center p-8"><div className="flex items-center gap-3 text-sm font-semibold text-muted-foreground"><span className="h-5 w-5 animate-spin rounded-full border-2 border-primary border-t-transparent" />Loading your workspace</div></div> }

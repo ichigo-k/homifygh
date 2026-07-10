@@ -1,0 +1,23 @@
+"use client"
+
+import Image from "next/image"
+import { useState, useTransition } from "react"
+import { BriefcaseBusiness, ImageIcon, Loader2, Plus, Trash2 } from "lucide-react"
+import { Button } from "@/components/ui/button"
+import { UploadField } from "@/components/auth/upload-field"
+import { addPortfolioImage, addService, removePortfolioImage, removeService } from "./actions"
+
+type Service = { id: string; name: string; description: string | null; startingPrice: number | null }
+type Portfolio = { id: string; imageUrl: string; caption: string | null }
+
+export function BusinessTools({ services, portfolio }: { services: Service[]; portfolio: Portfolio[] }) {
+  const [name, setName] = useState("")
+  const [description, setDescription] = useState("")
+  const [price, setPrice] = useState("")
+  const [imageUrl, setImageUrl] = useState("")
+  const [caption, setCaption] = useState("")
+  const [pending, startTransition] = useTransition()
+  function createService() { startTransition(async () => { await addService({ name, description, startingPrice: price ? Number(price) : null }); setName(""); setDescription(""); setPrice("") }) }
+  function createImage() { startTransition(async () => { await addPortfolioImage({ imageUrl, caption }); setImageUrl(""); setCaption("") }) }
+  return <><header className="mt-5"><p className="text-xs font-bold uppercase tracking-wider text-primary">Store content</p><h1 className="mt-1 text-3xl font-extrabold">Services and portfolio</h1><p className="mt-1 text-sm text-muted-foreground">Show customers exactly what you offer and the quality of your work.</p></header><div className="mt-6 grid gap-6 lg:grid-cols-2"><section className="rounded-3xl border border-border bg-card p-6"><div className="flex items-center gap-2"><BriefcaseBusiness className="h-5 w-5 text-primary" /><h2 className="font-extrabold">Service catalogue</h2></div><div className="mt-5 space-y-3"><input value={name} onChange={(e) => setName(e.target.value)} placeholder="Service name" className="h-11 w-full rounded-xl border border-input bg-background px-3 text-sm" /><textarea value={description} onChange={(e) => setDescription(e.target.value)} rows={2} placeholder="Short description" className="w-full rounded-xl border border-input bg-background px-3 py-2 text-sm" /><input type="number" min="1" value={price} onChange={(e) => setPrice(e.target.value)} placeholder="Starting price in GH₵ (optional)" className="h-11 w-full rounded-xl border border-input bg-background px-3 text-sm" /><Button className="w-full rounded-xl" disabled={pending || name.trim().length < 2} onClick={createService}>{pending ? <Loader2 className="animate-spin" /> : <Plus className="h-4 w-4" />}Add service</Button></div><div className="mt-5 space-y-2">{services.map((service) => <div key={service.id} className="flex items-start justify-between gap-3 rounded-2xl bg-muted/40 p-4"><div><p className="text-sm font-bold">{service.name}</p><p className="mt-1 text-xs text-muted-foreground">{service.description}</p>{service.startingPrice && <p className="mt-2 text-xs font-bold text-primary">From GH₵{service.startingPrice.toLocaleString()}</p>}</div><button onClick={() => startTransition(() => removeService(service.id))} aria-label="Remove service" className="text-muted-foreground hover:text-destructive"><Trash2 className="h-4 w-4" /></button></div>)}</div></section><section className="rounded-3xl border border-border bg-card p-6"><div className="flex items-center gap-2"><ImageIcon className="h-5 w-5 text-primary" /><h2 className="font-extrabold">Work portfolio</h2></div><div className="mt-5"><UploadField label="Upload a completed project photo" value={imageUrl} onChange={setImageUrl} /><input value={caption} onChange={(e) => setCaption(e.target.value)} placeholder="Caption (optional)" className="mt-3 h-11 w-full rounded-xl border border-input bg-background px-3 text-sm" /><Button className="mt-3 w-full rounded-xl" disabled={pending || !imageUrl} onClick={createImage}>{pending ? <Loader2 className="animate-spin" /> : <Plus className="h-4 w-4" />}Add to portfolio</Button></div><div className="mt-5 grid grid-cols-2 gap-3">{portfolio.map((item) => <div key={item.id} className="group relative overflow-hidden rounded-2xl border border-border"><div className="relative aspect-square"><Image src={item.imageUrl} alt={item.caption ?? "Portfolio work"} fill sizes="240px" className="object-cover" /></div><button onClick={() => startTransition(() => removePortfolioImage(item.id))} aria-label="Remove image" className="absolute right-2 top-2 rounded-full bg-black/60 p-2 text-white"><Trash2 className="h-3.5 w-3.5" /></button>{item.caption && <p className="p-2 text-xs">{item.caption}</p>}</div>)}</div></section></div></>
+}
