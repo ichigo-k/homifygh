@@ -2,11 +2,21 @@
 
 import { z } from "zod"
 import { revalidatePath } from "next/cache"
+import { headers } from "next/headers"
 import { prisma } from "@/lib/prisma"
 import { requireRole } from "@/lib/session"
 import { sendStoreSetupEmail, sendRejectionEmail } from "@/lib/email"
 
-const appBase = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000"
+function getAppBase() {
+  const configured = process.env.NEXT_PUBLIC_APP_URL
+  if (configured) return configured.replace(/\/$/, "")
+
+  const requestHeaders = headers()
+  const host = requestHeaders.get("x-forwarded-host") ?? requestHeaders.get("host")
+  const protocol = requestHeaders.get("x-forwarded-proto") ?? "https"
+
+  return host ? `${protocol}://${host}` : "http://localhost:3000"
+}
 
 export async function approveProvider(providerId: string) {
   const admin = await requireRole("ADMIN")
@@ -27,7 +37,7 @@ export async function approveProvider(providerId: string) {
   await sendStoreSetupEmail(
     provider.user.email,
     provider.user.firstName ?? provider.user.name,
-    `${appBase}/provider/store/setup`
+    `${getAppBase()}/provider/store/setup`
   )
 
   revalidatePath("/admin/providers")
@@ -59,7 +69,7 @@ export async function rejectProvider(input: z.infer<typeof rejectSchema>) {
     provider.user.email,
     provider.user.firstName ?? provider.user.name,
     notes,
-    `${appBase}/onboarding/provider/kyc`
+    `${getAppBase()}/onboarding/provider/kyc`
   )
 
   revalidatePath("/admin/providers")
