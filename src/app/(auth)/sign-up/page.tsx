@@ -3,6 +3,7 @@
 import { useState } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
+import { isEmailTaken } from "./actions"
 import { signUp } from "@/lib/auth-client"
 import { Button } from "@/components/ui/button"
 import { Field } from "@/components/auth/field"
@@ -20,6 +21,12 @@ export default function SignUpPage() {
     setError("")
 
     try {
+      if (await isEmailTaken(form.email)) {
+        setError("That email is already in use. Try another one.")
+        setLoading(false)
+        return
+      }
+
       const { error } = await signUp.email({
         name: `${form.firstName} ${form.lastName}`.trim(),
         firstName: form.firstName,
@@ -107,7 +114,7 @@ export default function SignUpPage() {
         <Button
           type="submit"
           disabled={loading}
-          className="group h-12 w-full rounded-xl bg-primary text-primary-foreground shadow-[var(--shadow-sm)] transition-all hover:bg-primary-hover hover:shadow-[var(--shadow-md)] disabled:opacity-70"
+          className="group h-12 w-full rounded-xl bg-primary text-primary-foreground shadow-(--shadow-sm) transition-all hover:bg-primary-hover hover:shadow-(--shadow-md) disabled:opacity-70"
         >
           {loading ? (
             <Loader2 className="h-4 w-4 animate-spin" />
