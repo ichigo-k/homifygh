@@ -19,7 +19,7 @@ export default async function ProviderPendingPage() {
         <Card
           tone="success"
           icon={<CheckCircle2 className="h-7 w-7" />}
-          title="You're approved! 🎉"
+          title="You're approved! "
           body="Your identity has been verified. Set up your store so customers can find and book you."
           action={{ href: "/provider/store/setup", label: "Set up my store" }}
         />

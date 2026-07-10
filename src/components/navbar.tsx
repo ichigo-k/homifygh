@@ -49,7 +49,7 @@ function homeLabelHref(user: SessionUser): {
 }
 
 /** Routes that render their own app shell — the marketing navbar is hidden here. */
-const APP_PREFIXES = ["/search", "/bookings", "/account"]
+const APP_PREFIXES = ["/search", "/bookings", "/account", "/onboarding", "/provider", "/pros", "/admin"]
 
 const roleLabels: Record<string, string> = {
   ADMIN: "Admin",

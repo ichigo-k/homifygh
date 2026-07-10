@@ -1,6 +1,6 @@
 "use client"
 
-import { useMemo, useState, useTransition } from "react"
+import { useMemo, useState } from "react"
 import Link from "next/link"
 import Image from "next/image"
 import {
@@ -10,9 +10,6 @@ import {
   BadgeCheck,
   Sparkles,
   X,
-  Calendar,
-  Loader2,
-  CheckCircle2,
   ArrowRight,
   SlidersHorizontal,
   LayoutGrid,
@@ -20,11 +17,10 @@ import {
   Check,
 } from "lucide-react"
 import { CATEGORIES, type CategorySlug } from "@/lib/categories"
-import { Button } from "@/components/ui/button"
-import { createBooking } from "./actions"
 
 export type SearchProvider = {
   id: string
+  slug: string
   name: string
   bio: string | null
   cover: string | null
@@ -44,14 +40,6 @@ const CAT = Object.fromEntries(CATEGORIES.map((c) => [c.slug, c])) as Record<
 type Sort = "rating" | "reviews"
 type MinRating = 0 | 4 | 4.5
 
-function defaultSchedule() {
-  const d = new Date()
-  d.setDate(d.getDate() + 3)
-  d.setHours(10, 0, 0, 0)
-  const pad = (n: number) => String(n).padStart(2, "0")
-  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`
-}
-
 export function SearchClient({
   providers,
   initialCategory,
@@ -69,7 +57,6 @@ export function SearchClient({
   const [minRating, setMinRating] = useState<MinRating>(0)
   const [verifiedOnly, setVerifiedOnly] = useState(false)
   const [view, setView] = useState<"grid" | "list">("grid")
-  const [selected, setSelected] = useState<SearchProvider | null>(null)
 
   // Provider counts per category (for the sidebar badges).
   const counts = useMemo(() => {
@@ -192,22 +179,19 @@ export function SearchClient({
           ) : view === "grid" ? (
             <div className="mt-5 grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
               {filtered.map((p) => (
-                <ProviderCard key={p.id} provider={p} onOpen={() => setSelected(p)} />
+                <ProviderCard key={p.id} provider={p} />
               ))}
             </div>
           ) : (
             <div className="mt-5 space-y-3">
               {filtered.map((p) => (
-                <ProviderRow key={p.id} provider={p} onOpen={() => setSelected(p)} />
+                <ProviderRow key={p.id} provider={p} />
               ))}
             </div>
           )}
         </div>
       </div>
 
-      {selected && (
-        <ProviderModal provider={selected} defaultAddress={defaultAddress} onClose={() => setSelected(null)} />
-      )}
     </div>
   )
 }
@@ -368,15 +352,11 @@ function CatRow({
   )
 }
 
-function ProviderRow({ provider, onOpen }: { provider: SearchProvider; onOpen: () => void }) {
+function ProviderRow({ provider }: { provider: SearchProvider }) {
   const meta = CAT[provider.category as CategorySlug]
   return (
-    <div
-      onClick={onOpen}
-      role="button"
-      tabIndex={0}
-      onKeyDown={(e) => (e.key === "Enter" || e.key === " ") && onOpen()}
-      className="group flex cursor-pointer items-center gap-4 rounded-2xl border border-border bg-card p-3 shadow-[var(--shadow-sm)] transition-all hover:border-primary/30 hover:shadow-[var(--shadow-md)]"
+    <Link href={`/pros/${provider.slug}`}
+      className="group flex items-center gap-4 rounded-2xl border border-border bg-card p-3 shadow-[var(--shadow-sm)] transition-all hover:border-primary/30 hover:shadow-[var(--shadow-md)]"
     >
       <CoverImage provider={provider} className="h-20 w-28 shrink-0 rounded-xl" sizes="112px" showChip={false} />
       <div className="min-w-0 flex-1">
@@ -403,7 +383,7 @@ function ProviderRow({ provider, onOpen }: { provider: SearchProvider; onOpen: (
         View
         <ArrowRight className="h-4 w-4 transition-transform duration-300 group-hover:translate-x-1" />
       </span>
-    </div>
+    </Link>
   )
 }
 
@@ -460,14 +440,10 @@ function SegBtn({ active, onClick, children }: { active: boolean; onClick: () =>
   )
 }
 
-function ProviderCard({ provider, onOpen }: { provider: SearchProvider; onOpen: () => void }) {
+function ProviderCard({ provider }: { provider: SearchProvider }) {
   return (
-    <div
-      onClick={onOpen}
-      role="button"
-      tabIndex={0}
-      onKeyDown={(e) => (e.key === "Enter" || e.key === " ") && onOpen()}
-      className="group flex cursor-pointer flex-col overflow-hidden rounded-2xl border border-border bg-card shadow-[var(--shadow-sm)] transition-all hover:-translate-y-0.5 hover:border-primary/30 hover:shadow-[var(--shadow-md)]"
+    <Link href={`/pros/${provider.slug}`}
+      className="group flex flex-col overflow-hidden rounded-2xl border border-border bg-card shadow-[var(--shadow-sm)] transition-all hover:-translate-y-0.5 hover:border-primary/30 hover:shadow-[var(--shadow-md)]"
     >
       <CoverImage provider={provider} className="aspect-[16/10]" />
 
@@ -500,192 +476,7 @@ function ProviderCard({ provider, onOpen }: { provider: SearchProvider; onOpen: 
           <ArrowRight className="h-4 w-4 transition-transform duration-300 group-hover:translate-x-1" />
         </span>
       </div>
-    </div>
+    </Link>
   )
 }
 
-function ProviderModal({
-  provider,
-  defaultAddress,
-  onClose,
-}: {
-  provider: SearchProvider
-  defaultAddress: string
-  onClose: () => void
-}) {
-  const [stage, setStage] = useState<"details" | "booking">("details")
-  const [when, setWhen] = useState(defaultSchedule())
-  const [address, setAddress] = useState(defaultAddress)
-  const [notes, setNotes] = useState("")
-  const [error, setError] = useState("")
-  const [done, setDone] = useState(false)
-  const [pending, start] = useTransition()
-
-  function submit() {
-    setError("")
-    if (!address.trim()) return setError("Enter the service address.")
-    if (!when) return setError("Pick a date and time.")
-    start(async () => {
-      try {
-        await createBooking({
-          providerId: provider.id,
-          scheduledAt: new Date(when).toISOString(),
-          address,
-          notes,
-        })
-        setDone(true)
-      } catch {
-        setError("Couldn't create the booking. Try again.")
-      }
-    })
-  }
-
-  return (
-    <div
-      className="fixed inset-0 z-[60] flex items-end justify-center bg-black/50 p-0 backdrop-blur-sm sm:items-center sm:p-4"
-      onClick={onClose}
-    >
-      <div
-        className="max-h-[92vh] w-full max-w-lg overflow-y-auto rounded-t-3xl border border-border bg-card shadow-[var(--shadow-lg)] sm:rounded-3xl"
-        onClick={(e) => e.stopPropagation()}
-      >
-        {done ? (
-          <div className="flex flex-col items-center p-8 text-center">
-            <span className="flex h-14 w-14 items-center justify-center rounded-2xl bg-accent text-primary">
-              <CheckCircle2 className="h-7 w-7" />
-            </span>
-            <h2 className="mt-4 text-lg font-bold tracking-tight">Booking requested 🎉</h2>
-            <p className="mt-1 text-sm text-muted-foreground">
-              {provider.name} will confirm shortly. Track it under My bookings.
-            </p>
-            <Button
-              className="group mt-5 w-full rounded-xl bg-primary text-primary-foreground hover:bg-primary-hover"
-              render={<Link href="/bookings" />}
-            >
-              Go to my bookings
-              <ArrowRight className="ml-1.5 h-4 w-4 transition-transform duration-300 group-hover:translate-x-1" />
-            </Button>
-            <button onClick={onClose} className="mt-2 text-sm font-medium text-muted-foreground hover:text-foreground">
-              Keep browsing
-            </button>
-          </div>
-        ) : (
-          <>
-            {/* Cover */}
-            <div className="relative">
-              <CoverImage provider={provider} className="aspect-[16/9]" sizes="(max-width: 640px) 100vw, 512px" />
-              <button
-                onClick={onClose}
-                className="absolute right-3 top-3 rounded-full bg-background/90 p-1.5 text-foreground shadow-[var(--shadow-sm)] backdrop-blur transition-colors hover:bg-background"
-                aria-label="Close"
-              >
-                <X className="h-5 w-5" />
-              </button>
-            </div>
-
-            <div className="p-6">
-              <div className="flex items-center gap-2">
-                <h2 className="text-xl font-bold tracking-tight">{provider.name}</h2>
-                {provider.verified && <BadgeCheck className="h-5 w-5 shrink-0 text-primary" />}
-              </div>
-              <div className="mt-1.5 flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-muted-foreground">
-                <span className="flex items-center gap-1">
-                  <Star className="h-4 w-4 fill-amber-400 text-amber-400" />
-                  <span className="font-semibold text-foreground">{provider.rating.toFixed(1)}</span>
-                  <span>({provider.reviews} reviews)</span>
-                </span>
-                {provider.location && (
-                  <span className="flex items-center gap-1">
-                    <MapPin className="h-4 w-4" />
-                    {provider.location}
-                  </span>
-                )}
-              </div>
-
-              {stage === "details" ? (
-                <>
-                  {provider.bio && (
-                    <p className="mt-4 text-sm leading-relaxed text-muted-foreground">{provider.bio}</p>
-                  )}
-                  <div className="mt-5 flex flex-col gap-2 sm:flex-row">
-                    <Button
-                      onClick={() => setStage("booking")}
-                      className="group h-12 flex-1 rounded-xl bg-primary text-primary-foreground hover:bg-primary-hover"
-                    >
-                      Request booking
-                      <ArrowRight className="ml-1.5 h-4 w-4 transition-transform duration-300 group-hover:translate-x-1" />
-                    </Button>
-                    <Button variant="outline" onClick={onClose} className="h-12 rounded-xl sm:w-28">
-                      Close
-                    </Button>
-                  </div>
-                </>
-              ) : (
-                <div className="mt-5 space-y-4">
-                  <button
-                    onClick={() => setStage("details")}
-                    className="-mt-1 inline-flex items-center gap-1 text-sm font-medium text-muted-foreground hover:text-foreground"
-                  >
-                    <ArrowRight className="h-4 w-4 rotate-180" />
-                    Back
-                  </button>
-
-                  <div>
-                    <label className="mb-1.5 block text-sm font-semibold">When</label>
-                    <div className="flex items-center gap-2 rounded-xl border border-input bg-background px-3 focus-within:border-primary focus-within:ring-4 focus-within:ring-primary/15">
-                      <Calendar className="h-4 w-4 text-muted-foreground" />
-                      <input
-                        type="datetime-local"
-                        value={when}
-                        onChange={(e) => setWhen(e.target.value)}
-                        className="w-full bg-transparent py-2.5 text-sm outline-none"
-                      />
-                    </div>
-                  </div>
-
-                  <div>
-                    <label className="mb-1.5 block text-sm font-semibold">Service address</label>
-                    <div className="flex items-center gap-2 rounded-xl border border-input bg-background px-3 focus-within:border-primary focus-within:ring-4 focus-within:ring-primary/15">
-                      <MapPin className="h-4 w-4 text-muted-foreground" />
-                      <input
-                        value={address}
-                        onChange={(e) => setAddress(e.target.value)}
-                        placeholder="e.g. East Legon, Accra"
-                        className="w-full bg-transparent py-2.5 text-sm outline-none placeholder:text-muted-foreground"
-                      />
-                    </div>
-                  </div>
-
-                  <div>
-                    <label className="mb-1.5 block text-sm font-semibold">
-                      Notes <span className="font-normal text-muted-foreground">(optional)</span>
-                    </label>
-                    <textarea
-                      rows={2}
-                      value={notes}
-                      onChange={(e) => setNotes(e.target.value)}
-                      placeholder="Describe the job…"
-                      className="w-full rounded-xl border border-input bg-background px-3.5 py-2.5 text-sm outline-none transition-all placeholder:text-muted-foreground focus:border-primary focus:ring-4 focus:ring-primary/15"
-                    />
-                  </div>
-
-                  {error && (
-                    <p className="rounded-xl bg-destructive/10 px-3.5 py-2.5 text-sm text-destructive">{error}</p>
-                  )}
-
-                  <Button
-                    onClick={submit}
-                    disabled={pending}
-                    className="h-12 w-full rounded-xl bg-primary text-primary-foreground hover:bg-primary-hover disabled:opacity-70"
-                  >
-                    {pending ? <Loader2 className="h-4 w-4 animate-spin" /> : "Confirm request"}
-                  </Button>
-                </div>
-              )}
-            </div>
-          </>
-        )}
-      </div>
-    </div>
-  )
-}

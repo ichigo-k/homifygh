@@ -31,6 +31,7 @@ export default async function SearchPage({
     orderBy: [{ avgRating: "desc" }, { totalReviews: "desc" }],
     select: {
       id: true,
+      storeSlug: true,
       storeName: true,
       bio: true,
       coverImageUrl: true,
@@ -45,6 +46,7 @@ export default async function SearchPage({
 
   const providers: SearchProvider[] = rows.map((p: (typeof rows)[number]) => ({
     id: p.id,
+    slug: p.storeSlug!,
     name: p.storeName ?? p.user.name,
     bio: p.bio,
     cover: p.coverImageUrl,

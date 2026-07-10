@@ -10,9 +10,9 @@ const user = process.env.GMAIL_USER
 const pass = process.env.GMAIL_APP_PASSWORD
 const emailConfigured = Boolean(
   user &&
-    pass &&
-    user !== "youraddress@gmail.com" &&
-    !/^x+(\s+x+)*$/i.test(pass.trim())
+  pass &&
+  user !== "youraddress@gmail.com" &&
+  !/^x+(\s+x+)*$/i.test(pass.trim())
 )
 
 // Single shared Gmail SMTP transport (app password — not the account password).
@@ -31,10 +31,17 @@ async function deliver(opts: {
   logLine: string
 }) {
   if (!emailConfigured) {
-    console.log(`\n📭 [email dev fallback] → ${opts.to}\n   ${opts.subject}\n   ${opts.logLine}\n`)
+    console.log(`\n [email dev fallback] → ${opts.to}\n   ${opts.subject}\n   ${opts.logLine}\n`)
     return
   }
-  await transporter.sendMail({ from, to: opts.to, subject: opts.subject, html: opts.html })
+
+  try {
+    await transporter.sendMail({ from, to: opts.to, subject: opts.subject, html: opts.html })
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Unknown email error"
+    console.error(`[email error] Failed to send to ${opts.to}:`, message)
+    throw new Error(`Failed to send email: ${message}`)
+  }
 }
 
 function shell(title: string, body: string) {
@@ -82,7 +89,7 @@ export async function sendStoreSetupEmail(to: string, name: string, link: string
     logLine: `Approved. Store setup: ${link}`,
     subject: "You're approved — set up your Homify store",
     html: shell(
-      "You're approved! 🎉",
+      "You're approved! ",
       `<p style="color:#555;line-height:1.6;margin:0 0 20px">
          Hi ${name}, your provider application has been reviewed and approved.
          The last step is to set up your service store so customers can find and book you.

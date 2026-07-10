@@ -19,24 +19,31 @@ export default function SignInPage() {
     setLoading(true)
     setError("")
 
-    const { error } = await signIn.email({
-      email: form.email,
-      password: form.password,
-    })
+    try {
+      const { error } = await signIn.email({
+        email: form.email,
+        password: form.password,
+      })
 
-    if (error) {
-      // Email not verified yet → send them through the OTP flow.
-      if (error.status === 403 || /verif/i.test(error.message ?? "")) {
-        router.push(`/verify-email?email=${encodeURIComponent(form.email)}`)
+      if (error) {
+        // Email not verified yet → send them through the OTP flow.
+        if (error.status === 403 || /verif/i.test(error.message ?? "")) {
+          router.push(`/verify-email?email=${encodeURIComponent(form.email)}`)
+          return
+        }
+        setError(error.message ?? "Invalid email or password.")
+        setLoading(false)
         return
       }
-      setError(error.message ?? "Invalid email or password.")
-      setLoading(false)
-      return
-    }
 
-    // Land in the app; server layouts route to onboarding or the role home.
-    router.push("/search")
+      // Land in the app; server layouts route to onboarding or the role home.
+      router.push("/search")
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Something went wrong. Try again."
+      setError(message)
+      setLoading(false)
+      console.error("Sign-in error:", err)
+    }
   }
 
   return (
@@ -66,7 +73,7 @@ export default function SignInPage() {
             label="Password"
             type="password"
             icon={Lock}
-            autoComplete="off"
+            autoComplete="current-password"
             value={form.password}
             onChange={(e) => setForm({ ...form, password: e.target.value })}
             required

@@ -1,52 +1,60 @@
 "use server"
 
 import { revalidatePath } from "next/cache"
+import { z } from "zod"
 import { prisma } from "@/lib/prisma"
 import { requireRole } from "@/lib/session"
 
-/** Re-create a past booking as a fresh PENDING request, scheduled a week out. */
 export async function rebookBooking(bookingId: string) {
   const user = await requireRole("CUSTOMER")
-
-  const prev = await prisma.booking.findFirst({
+  const previous = await prisma.booking.findFirst({
     where: { id: bookingId, customerId: user.id },
+    include: { provider: { select: { status: true, storeSetupComplete: true } } },
   })
-  if (!prev) throw new Error("Booking not found.")
-
+  if (!previous) return { ok: false as const, message: "Booking not found." }
+  if (previous.provider.status !== "APPROVED" || !previous.provider.storeSetupComplete) {
+    return { ok: false as const, message: "This provider is not currently accepting bookings." }
+  }
   const scheduledAt = new Date()
   scheduledAt.setDate(scheduledAt.getDate() + 7)
   scheduledAt.setHours(10, 0, 0, 0)
-
-  await prisma.booking.create({
-    data: {
-      customerId: user.id,
-      providerId: prev.providerId,
-      category: prev.category,
-      status: "PENDING",
-      scheduledAt,
-      address: prev.address,
-      notes: prev.notes,
-      amount: prev.amount,
-    },
-  })
-
+  await prisma.booking.create({ data: { customerId: user.id, providerId: previous.providerId, category: previous.category, scheduledAt, address: previous.address, notes: previous.notes } })
   revalidatePath("/bookings")
+  return { ok: true as const }
 }
 
-/** Cancel an active booking. */
 export async function cancelBooking(bookingId: string) {
   const user = await requireRole("CUSTOMER")
-
-  const booking = await prisma.booking.findFirst({
-    where: { id: bookingId, customerId: user.id },
-  })
-  if (!booking) throw new Error("Booking not found.")
-  if (["COMPLETED", "CANCELLED"].includes(booking.status)) return
-
-  await prisma.booking.update({
-    where: { id: bookingId },
+  const result = await prisma.booking.updateMany({
+    where: { id: bookingId, customerId: user.id, status: { in: ["PENDING", "ACCEPTED"] } },
     data: { status: "CANCELLED" },
   })
-
+  if (!result.count) return { ok: false as const, message: "This booking can no longer be cancelled." }
   revalidatePath("/bookings")
+  revalidatePath("/provider")
+  return { ok: true as const }
+}
+
+const reviewSchema = z.object({ bookingId: z.string().min(1), rating: z.number().int().min(1).max(5), comment: z.string().trim().max(600) })
+
+export async function submitReview(input: z.infer<typeof reviewSchema>) {
+  const user = await requireRole("CUSTOMER")
+  const parsed = reviewSchema.safeParse(input)
+  if (!parsed.success) return { ok: false as const, message: "Choose a rating from 1 to 5 stars." }
+  const booking = await prisma.booking.findFirst({
+    where: { id: parsed.data.bookingId, customerId: user.id, status: "COMPLETED" },
+    select: { providerId: true, review: { select: { id: true } } },
+  })
+  if (!booking) return { ok: false as const, message: "Only completed jobs can be reviewed." }
+  if (booking.review) return { ok: false as const, message: "You have already reviewed this job." }
+
+  await prisma.$transaction(async (tx) => {
+    await tx.review.create({ data: { bookingId: parsed.data.bookingId, customerId: user.id, providerId: booking.providerId, rating: parsed.data.rating, comment: parsed.data.comment || null } })
+    const ratings = await tx.review.aggregate({ where: { providerId: booking.providerId }, _avg: { rating: true }, _count: { rating: true } })
+    await tx.provider.update({ where: { id: booking.providerId }, data: { avgRating: ratings._avg.rating ?? 0, totalReviews: ratings._count.rating } })
+  })
+  revalidatePath("/bookings")
+  revalidatePath("/search")
+  revalidatePath("/provider")
+  return { ok: true as const }
 }

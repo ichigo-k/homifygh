@@ -19,22 +19,29 @@ export default function SignUpPage() {
     setLoading(true)
     setError("")
 
-    const { error } = await signUp.email({
-      name: `${form.firstName} ${form.lastName}`.trim(),
-      firstName: form.firstName,
-      lastName: form.lastName,
-      email: form.email,
-      password: form.password,
-    })
+    try {
+      const { error } = await signUp.email({
+        name: `${form.firstName} ${form.lastName}`.trim(),
+        firstName: form.firstName,
+        lastName: form.lastName,
+        email: form.email,
+        password: form.password,
+      })
 
-    if (error) {
-      setError(error.message ?? "Something went wrong. Try again.")
+      if (error) {
+        setError(error.message ?? "Something went wrong. Try again.")
+        setLoading(false)
+        return
+      }
+
+      // Account created (unverified). An OTP was emailed on sign-up.
+      router.push(`/verify-email?email=${encodeURIComponent(form.email)}`)
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Something went wrong. Try again."
+      setError(message)
       setLoading(false)
-      return
+      console.error("Sign-up error:", err)
     }
-
-    // Account created (unverified). An OTP was emailed on sign-up.
-    router.push(`/verify-email?email=${encodeURIComponent(form.email)}`)
   }
 
   return (

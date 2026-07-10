@@ -33,16 +33,26 @@ function VerifyEmailInner() {
     if (value.length !== OTP_LENGTH || !email) return
     setLoading(true)
     setError("")
-    const { error } = await emailOtp.verifyEmail({ email, otp: value })
-    if (error) {
-      setError(error.message ?? "Invalid or expired code.")
+
+    try {
+      const { error } = await emailOtp.verifyEmail({ email, otp: value })
+      if (error) {
+        setError(error.message ?? "Invalid or expired code.")
+        setDigits(Array(OTP_LENGTH).fill(""))
+        inputs.current[0]?.focus()
+        setLoading(false)
+        return
+      }
+      // Verified + signed in → start onboarding.
+      router.push("/onboarding/account-type")
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Something went wrong. Try again."
+      setError(message)
       setDigits(Array(OTP_LENGTH).fill(""))
       inputs.current[0]?.focus()
       setLoading(false)
-      return
+      console.error("Email verification error:", err)
     }
-    // Verified + signed in → start onboarding.
-    router.push("/onboarding/account-type")
   }
 
   function setDigit(i: number, val: string) {
@@ -78,8 +88,15 @@ function VerifyEmailInner() {
   async function resend() {
     if (!email || resendIn > 0) return
     setError("")
-    await emailOtp.sendVerificationOtp({ email, type: "email-verification" })
-    setResendIn(45)
+
+    try {
+      await emailOtp.sendVerificationOtp({ email, type: "email-verification" })
+      setResendIn(45)
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Failed to resend code. Try again."
+      setError(message)
+      console.error("Resend OTP error:", err)
+    }
   }
 
   if (!email) {
