@@ -17,6 +17,7 @@ export type ProviderBookingItem = {
   address: string
   notes: string | null
   amount: number | null
+  offeredAmount: number | null
   customerName: string
   customerPhone: string | null
 }
@@ -83,7 +84,7 @@ function FilterButton({ active, onClick, children }: { active: boolean; onClick:
 
 function BookingCard({ booking }: { booking: ProviderBookingItem }) {
   const [expanded, setExpanded] = useState(booking.status === "PENDING")
-  const [amount, setAmount] = useState(booking.amount?.toString() ?? "")
+  const [amount, setAmount] = useState(booking.amount?.toString() ?? booking.offeredAmount?.toString() ?? "")
   const [error, setError] = useState("")
   const [pending, startTransition] = useTransition()
   const meta = statusMeta[booking.status]
@@ -125,6 +126,14 @@ function BookingCard({ booking }: { booking: ProviderBookingItem }) {
             <div><p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Job notes</p><p className="mt-1 leading-relaxed">{booking.notes || "No additional notes provided."}</p></div>
             <div><p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Customer</p><p className="mt-1 flex items-center gap-1.5"><UserRound className="h-4 w-4 text-muted-foreground" />{booking.customerPhone || "Phone not provided"}</p></div>
           </div>
+          {booking.offeredAmount != null && (
+            <div className="mt-3 flex items-center gap-2 rounded-xl border border-primary/20 bg-primary/5 px-3 py-2 text-sm">
+              <span className="rounded-full bg-primary/10 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-primary">Flex</span>
+              <span className="text-muted-foreground">Customer proposed</span>
+              <span className="font-bold text-primary">GH₵{booking.offeredAmount.toLocaleString()}</span>
+              <span className="text-muted-foreground">— accept it or enter your counter estimate below.</span>
+            </div>
+          )}
           {error && <p className="mt-3 rounded-xl bg-destructive/10 px-3 py-2 text-sm text-destructive">{error}</p>}
           <div className="mt-4 flex flex-col gap-2 border-t border-border pt-4 sm:flex-row sm:items-center sm:justify-end">
             {booking.status === "PENDING" && (

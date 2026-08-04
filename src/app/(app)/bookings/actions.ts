@@ -35,6 +35,24 @@ export async function cancelBooking(bookingId: string) {
   return { ok: true as const }
 }
 
+/** Permanently remove a cancelled booking from the customer's history. */
+export async function deleteBooking(bookingId: string) {
+  const user = await requireRole("CUSTOMER")
+  // Only the owner, and only CANCELLED bookings, can be deleted — active or
+  // completed jobs stay for the record. Reviews are removed alongside.
+  const booking = await prisma.booking.findFirst({
+    where: { id: bookingId, customerId: user.id, status: "CANCELLED" },
+    select: { id: true },
+  })
+  if (!booking) return { ok: false as const, message: "Only cancelled bookings can be deleted." }
+  await prisma.$transaction([
+    prisma.review.deleteMany({ where: { bookingId } }),
+    prisma.booking.delete({ where: { id: bookingId } }),
+  ])
+  revalidatePath("/bookings")
+  return { ok: true as const }
+}
+
 const reviewSchema = z.object({ bookingId: z.string().min(1), rating: z.number().int().min(1).max(5), comment: z.string().trim().max(600) })
 
 export async function submitReview(input: z.infer<typeof reviewSchema>) {

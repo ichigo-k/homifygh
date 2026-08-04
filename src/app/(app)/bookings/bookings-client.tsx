@@ -2,10 +2,11 @@
 
 import { useMemo, useState, useTransition } from "react"
 import Link from "next/link"
-import { Calendar, CalendarCheck, CheckCircle2, Loader2, MapPin, Plus, RotateCcw, Sparkles, Star, X, XCircle } from "lucide-react"
+import { Calendar, CalendarCheck, CheckCircle2, Loader2, MapPin, Plus, RotateCcw, Sparkles, Star, Trash2, X, XCircle } from "lucide-react"
 import { CATEGORIES, type CategorySlug } from "@/lib/categories"
 import { Button } from "@/components/ui/button"
-import { cancelBooking, rebookBooking, submitReview } from "./actions"
+import { BackButton } from "@/components/back-button"
+import { cancelBooking, deleteBooking, rebookBooking, submitReview } from "./actions"
 
 export type BookingItem = {
   id: string
@@ -41,6 +42,7 @@ export function BookingsClient({ bookings }: { bookings: BookingItem[] }) {
   const list = tab === "upcoming" ? upcoming : past
 
   return <main className="min-h-[calc(100vh-4rem)] bg-muted/20"><div className="mx-auto max-w-4xl px-4 py-8 sm:px-6 lg:py-10">
+    <BackButton className="mb-4" />
     <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between"><div><p className="text-xs font-bold uppercase tracking-[0.18em] text-primary">Your service hub</p><h1 className="mt-1 text-3xl font-extrabold tracking-tight">My bookings</h1><p className="mt-1 text-sm text-muted-foreground">Everything from request to verified review, in one place.</p></div><Button className="h-11 rounded-xl px-4" render={<Link href="/search" />}><Plus className="mr-1.5 h-4 w-4" />Book a service</Button></div>
     {reviewCount > 0 && <button onClick={() => setTab("past")} className="mt-6 flex w-full items-center gap-3 rounded-2xl border border-amber-400/30 bg-amber-400/10 p-4 text-left"><span className="flex h-10 w-10 items-center justify-center rounded-xl bg-amber-400/20 text-amber-700"><Star className="h-5 w-5 fill-current" /></span><span className="flex-1"><span className="block text-sm font-bold">{reviewCount === 1 ? "How did your service go?" : `${reviewCount} services are ready for feedback`}</span><span className="block text-xs text-muted-foreground">Your verified review helps good professionals stand out.</span></span><span className="text-sm font-semibold text-primary">Review now</span></button>}
     <div className="mt-6 flex w-fit rounded-xl bg-muted p-1"><Tab active={tab === "upcoming"} onClick={() => setTab("upcoming")}>Active <Count>{upcoming.length}</Count></Tab><Tab active={tab === "past"} onClick={() => setTab("past")}>History <Count>{past.length}</Count></Tab></div>
@@ -68,7 +70,8 @@ function BookingCard({ booking }: { booking: BookingItem }) {
     </div>
     <div className="flex flex-wrap items-center justify-end gap-2 border-t border-border bg-muted/20 px-5 py-3">
       {canCancel && <Button size="sm" variant="ghost" disabled={pending} className="rounded-lg text-muted-foreground hover:text-destructive" onClick={() => run(() => cancelBooking(booking.id))}>{pending ? <Loader2 className="animate-spin" /> : <><XCircle className="mr-1 h-3.5 w-3.5" />Cancel</>}</Button>}
-      {["COMPLETED", "CANCELLED"].includes(booking.status) && <Button size="sm" variant="outline" disabled={pending} className="rounded-lg" onClick={() => run(() => rebookBooking(booking.id))}>{pending ? <Loader2 className="animate-spin" /> : <><RotateCcw className="mr-1 h-3.5 w-3.5" />Book again</>}</Button>}
+      {["COMPLETED", "CANCELLED"].includes(booking.status) && <Button size="sm" variant="outline" disabled={pending} title="Request this service again" className="rounded-lg" onClick={() => run(() => rebookBooking(booking.id))}>{pending ? <Loader2 className="animate-spin" /> : <><RotateCcw className="mr-1 h-3.5 w-3.5" />Book again</>}</Button>}
+      {booking.status === "CANCELLED" && <Button size="sm" variant="ghost" disabled={pending} title="Remove this cancelled booking from your history" className="rounded-lg text-muted-foreground hover:text-destructive" onClick={() => { if (confirm("Delete this cancelled booking from your history? This cannot be undone.")) run(() => deleteBooking(booking.id)) }}>{pending ? <Loader2 className="animate-spin" /> : <><Trash2 className="mr-1 h-3.5 w-3.5" />Delete</>}</Button>}
       {booking.status === "COMPLETED" && !booking.reviewed && <Button size="sm" className="rounded-lg" onClick={() => setReviewing(true)}><Star className="mr-1 h-3.5 w-3.5" />Leave a review</Button>}
       {booking.reviewed && <span className="flex items-center gap-1.5 text-xs font-semibold text-amber-600"><Star className="h-3.5 w-3.5 fill-current" />Your {booking.reviewRating}-star review</span>}
     </div>

@@ -13,6 +13,12 @@
  * ─────────────────────────────────────────────────────────────────────────────
  */
 :root {
+  /* Typography — a strong, highly legible system stack. Defined here because
+   * the app doesn't load a web font; keeps text crisp with no network fetch.
+   * `font-sans`/`font-mono` in @theme inline resolve to these. */
+  --font-geist-sans: "Segoe UI", system-ui, -apple-system, "Helvetica Neue", Arial, sans-serif;
+  --font-geist-mono: ui-monospace, "SF Mono", "Cascadia Code", Consolas, monospace;
+
   /* Brand */
   --brand-hue: 150;
   --brand-chroma: 0.15;
@@ -42,7 +48,8 @@
   --secondary: oklch(0.97 0 0);
   --secondary-foreground: oklch(0.13 0 0);
   --muted: oklch(0.96 0 0);
-  --muted-foreground: oklch(0.50 0 0);
+  /* Darkened for stronger contrast / legibility (was 0.50) */
+  --muted-foreground: oklch(0.44 0 0);
   --accent: oklch(0.96 0.01 var(--brand-hue));
   --accent-foreground: oklch(var(--brand-l) var(--brand-chroma) var(--brand-hue));
 
@@ -100,8 +107,9 @@
 
   --secondary: oklch(0.20 0 0);
   --secondary-foreground: oklch(0.97 0 0);
-  --muted: oklch(0.20 0 0);
-  --muted-foreground: oklch(0.62 0 0);
+  --muted: oklch(0.22 0 0);
+  /* Brightened for dark-mode legibility (was 0.62) */
+  --muted-foreground: oklch(0.76 0 0);
   --accent: oklch(0.18 0.02 var(--brand-hue));
   --accent-foreground: oklch(var(--brand-l) var(--brand-chroma) var(--brand-hue));
 
@@ -183,9 +191,21 @@
   }
   body {
     @apply bg-background text-foreground;
+    /* Heavier base weight + full-height leading for easier reading, especially
+     * for low-vision users. Headings stay bold via their own utilities. */
+    font-weight: 450;
+    letter-spacing: 0.005em;
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
   }
   html {
     @apply font-sans;
+    font-size: 16.5px;
+  }
+  /* Muted text is the most common legibility complaint — give it a touch more
+   * weight so it never reads as thin grey, in either theme. */
+  .text-muted-foreground {
+    font-weight: 500;
   }
 }
 

@@ -36,8 +36,11 @@ export default function SignInPage() {
         return
       }
 
-      // Land in the app; server layouts route to onboarding or the role home.
-      router.push("/search")
+      // Full-page navigation (not router.push) so the freshly-set session
+      // cookie is present on the very first server render of /search — this is
+      // what stops the endless spinner after a successful sign-in. Server
+      // layouts route on to onboarding or the correct role home from there.
+      window.location.assign("/search")
     } catch (err) {
       const message = err instanceof Error ? err.message : "Something went wrong. Try again."
       setError(message)

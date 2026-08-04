@@ -31,11 +31,16 @@ export async function updateProviderBooking(input: ProviderBookingAction) {
       : data.action === "START"
         ? { title: "Work started", message: `${provider.storeName ?? "Your provider"} marked the job as in progress.` }
         : { title: "Work completed", message: "Your job was marked complete. You can now leave a verified review." }
-  await prisma.$transaction(async (tx) => {
-    await tx.booking.update({ where: { id: data.bookingId }, data: { status: nextStatus, ...(data.action === "ACCEPT" ? { amount: data.amount } : {}) } })
-    await notify(tx, { userId: booking.customerId, type: "BOOKING", ...copy, href: "/bookings" })
-    await audit(tx, { actorId: user.id, action: `BOOKING_${nextStatus}`, entityType: "Booking", entityId: data.bookingId })
-  })
+  // Critical write first; notification + audit are best-effort afterwards, so a
+  // slow side-effect can't blow the interactive-transaction limit and fail the
+  // status change (see the same fix in the customer createBooking action).
+  await prisma.booking.update({ where: { id: data.bookingId }, data: { status: nextStatus, ...(data.action === "ACCEPT" ? { amount: data.amount } : {}) } })
+  try {
+    await notify(prisma, { userId: booking.customerId, type: "BOOKING", ...copy, href: "/bookings" })
+    await audit(prisma, { actorId: user.id, action: `BOOKING_${nextStatus}`, entityType: "Booking", entityId: data.bookingId })
+  } catch (err) {
+    console.error("[updateProviderBooking] side-effect failed:", err)
+  }
   revalidatePath("/provider")
   revalidatePath("/bookings")
   return { ok: true as const }

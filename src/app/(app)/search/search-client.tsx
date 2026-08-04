@@ -16,7 +16,7 @@ import {
   List,
   Check,
 } from "lucide-react"
-import { CATEGORIES, type CategorySlug } from "@/lib/categories"
+import { CATEGORIES, categoryImage, type CategorySlug } from "@/lib/categories"
 
 export type SearchProvider = {
   id: string
@@ -401,21 +401,18 @@ function CoverImage({
 }) {
   const meta = CAT[provider.category as CategorySlug]
   const Icon = meta?.icon ?? Sparkles
+  // Always show a service-appropriate photo — the provider's own cover, or a
+  // representative image for their trade so the card reflects the service type.
+  const src = provider.cover ?? categoryImage(provider.category)
   return (
     <div className={`relative overflow-hidden bg-accent ${className}`}>
-      {provider.cover ? (
-        <Image
-          src={provider.cover}
-          alt={provider.name}
-          fill
-          sizes={sizes ?? "(max-width: 768px) 100vw, 33vw"}
-          className="object-cover transition-transform duration-500 group-hover:scale-105"
-        />
-      ) : (
-        <div className="flex h-full w-full items-center justify-center text-primary/40">
-          <Icon className="h-10 w-10" />
-        </div>
-      )}
+      <Image
+        src={src}
+        alt={`${meta?.label ?? provider.category} — ${provider.name}`}
+        fill
+        sizes={sizes ?? "(max-width: 768px) 100vw, 33vw"}
+        className="object-cover transition-transform duration-500 group-hover:scale-105"
+      />
       {showChip && (
         <span className="absolute left-3 top-3 inline-flex items-center gap-1.5 rounded-full bg-background/90 px-2.5 py-1 text-[11px] font-semibold text-foreground shadow-[var(--shadow-sm)] backdrop-blur">
           <Icon className="h-3.5 w-3.5 text-primary" />

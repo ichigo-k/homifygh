@@ -35,7 +35,7 @@ export function Logo({ className }: { className?: string }) {
         className
       )}
     >
-      h
+      H
       <LogoMark className="mx-[0.5px] h-[0.82em] w-[0.82em]" />
       mify
       <span className="ml-1.5 text-[0.7em] font-semibold text-muted-foreground">

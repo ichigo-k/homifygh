@@ -49,7 +49,7 @@ function shell(title: string, body: string) {
   <div style="background:#f6f7f6;padding:32px 0;font-family:'Helvetica Neue',Arial,sans-serif;color:#1a1a1a">
     <div style="max-width:480px;margin:0 auto;background:#ffffff;border:1px solid #ececec;border-radius:20px;overflow:hidden">
       <div style="padding:28px 32px 0">
-        <span style="font-size:20px;font-weight:800;letter-spacing:-0.02em">homify <span style="color:#16a34a">GH</span></span>
+        <span style="font-size:20px;font-weight:800;letter-spacing:-0.02em">Homify <span style="color:#16a34a">GH</span></span>
       </div>
       <div style="padding:20px 32px 32px">
         <h1 style="font-size:20px;font-weight:800;margin:8px 0 12px">${title}</h1>
@@ -78,6 +78,44 @@ export async function sendOtpEmail(to: string, otp: string) {
        </div>
        <p style="color:#999;font-size:13px;margin:20px 0 0">
          Didn't request this? You can safely ignore this email.
+       </p>`
+    ),
+  })
+}
+
+export async function sendBookingRequestEmail(opts: {
+  to: string
+  providerName: string
+  customerName: string
+  category: string
+  when: string
+  address: string
+  notes?: string | null
+  offeredAmount?: number | null
+  link: string
+}) {
+  await deliver({
+    to: opts.to,
+    logLine: `New booking from ${opts.customerName} · ${opts.category} · ${opts.when}`,
+    subject: `New booking request from ${opts.customerName}`,
+    html: shell(
+      "You have a new booking request",
+      `<p style="color:#555;line-height:1.6;margin:0 0 16px">
+         Hi ${opts.providerName}, <strong>${opts.customerName}</strong> just requested a service on Homify.
+       </p>
+       <table style="width:100%;border-collapse:collapse;font-size:14px;color:#333;margin:0 0 20px">
+         <tr><td style="padding:6px 0;color:#888">Service</td><td style="padding:6px 0;text-align:right;font-weight:600">${opts.category}</td></tr>
+         <tr><td style="padding:6px 0;color:#888">When</td><td style="padding:6px 0;text-align:right;font-weight:600">${opts.when}</td></tr>
+         <tr><td style="padding:6px 0;color:#888">Address</td><td style="padding:6px 0;text-align:right;font-weight:600">${opts.address}</td></tr>
+         ${opts.offeredAmount ? `<tr><td style="padding:6px 0;color:#888">Customer's Flex offer</td><td style="padding:6px 0;text-align:right;font-weight:700;color:#16a34a">GH₵${opts.offeredAmount.toLocaleString()}</td></tr>` : ""}
+         ${opts.notes ? `<tr><td style="padding:6px 0;color:#888;vertical-align:top">Details</td><td style="padding:6px 0;text-align:right">${opts.notes}</td></tr>` : ""}
+       </table>
+       <a href="${opts.link}" style="display:inline-block;background:#16a34a;color:#fff;text-decoration:none;
+                 font-weight:700;padding:13px 26px;border-radius:999px">
+         Review request
+       </a>
+       <p style="color:#999;font-size:13px;margin:20px 0 0">
+         Respond quickly to win the job — customers can pick another provider.
        </p>`
     ),
   })

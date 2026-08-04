@@ -2,9 +2,10 @@
 
 import { useState, useTransition } from "react"
 import Link from "next/link"
-import { ArrowRight, Calendar, CheckCircle2, Loader2, MapPin } from "lucide-react"
+import { ArrowRight, Calendar, CheckCircle2, Handshake, Loader2, LocateFixed, MapPin, Tag } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { createBooking } from "../../search/actions"
+import { useMyLocation } from "@/components/use-my-location"
 
 function initialDate() {
   const date = new Date()
@@ -30,18 +31,22 @@ export function BookingPanel({
   providerId,
   providerName,
   defaultAddress,
+  startingPrice,
 }: {
   providerId: string
   providerName: string
   defaultAddress: string
+  startingPrice: number | null
 }) {
   const [scheduledAt, setScheduledAt] = useState(initialDate())
   const [address, setAddress] = useState(defaultAddress)
   const [notes, setNotes] = useState("")
+  const [offer, setOffer] = useState("")
   const [error, setError] = useState("")
   const [complete, setComplete] = useState(false)
   const [pending, startTransition] = useTransition()
   const [showDatePicker, setShowDatePicker] = useState(false)
+  const { locating, error: locError, detect } = useMyLocation()
 
   function handleDateChange(e: React.ChangeEvent<HTMLInputElement>) {
     const selectedDate = new Date(e.target.value)
@@ -65,11 +70,13 @@ export function BookingPanel({
     setError("")
     startTransition(async () => {
       try {
+        const offeredAmount = offer.trim() ? Number(offer) : undefined
         await createBooking({
           providerId,
           scheduledAt: new Date(scheduledAt).toISOString(),
           address,
           notes,
+          ...(offeredAmount && offeredAmount > 0 ? { offeredAmount } : {}),
         })
         setComplete(true)
       } catch (caught) {
@@ -114,6 +121,19 @@ export function BookingPanel({
       <p className="mt-1 text-sm text-muted-foreground">
         No payment is taken now. The provider confirms the estimate first.
       </p>
+
+      {startingPrice != null && (
+        <div
+          title="This is the provider's starting price. With Flex you can propose your own price to negotiate."
+          className="mt-4 flex items-center justify-between rounded-2xl border border-primary/20 bg-primary/5 px-4 py-3"
+        >
+          <span className="flex items-center gap-2 text-sm font-semibold">
+            <Tag className="h-4 w-4 text-primary" />
+            Starting price
+          </span>
+          <span className="text-lg font-extrabold text-primary">GH₵{startingPrice.toLocaleString()}</span>
+        </div>
+      )}
 
       <div className="mt-5 space-y-4">
         <label className="block">
@@ -168,7 +188,19 @@ export function BookingPanel({
         </label>
 
         <label className="block">
-          <span className="text-sm font-semibold">Service address</span>
+          <div className="flex items-center justify-between">
+            <span className="text-sm font-semibold">Service address</span>
+            <button
+              type="button"
+              onClick={() => detect((label) => setAddress(label))}
+              disabled={locating}
+              title="Detect my current location automatically"
+              className="inline-flex items-center gap-1 text-xs font-semibold text-primary hover:underline disabled:opacity-60"
+            >
+              {locating ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <LocateFixed className="h-3.5 w-3.5" />}
+              Use my location
+            </button>
+          </div>
           <span className="mt-2 flex items-center gap-2 rounded-xl border border-input bg-background px-3 focus-within:border-primary">
             <MapPin className="h-4 w-4 text-muted-foreground" />
             <input
@@ -178,6 +210,27 @@ export function BookingPanel({
               className="h-11 w-full bg-transparent text-sm outline-none"
             />
           </span>
+          {locError && <span className="mt-1 block text-xs text-destructive">{locError}</span>}
+        </label>
+
+        <label className="block">
+          <span className="flex items-center gap-1.5 text-sm font-semibold">
+            <Handshake className="h-4 w-4 text-primary" />
+            Propose your price
+            <span className="rounded-full bg-primary/10 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-primary">Flex</span>
+          </span>
+          <span className="mt-2 flex items-center gap-2 rounded-xl border border-input bg-background px-3 focus-within:border-primary">
+            <span className="text-sm font-semibold text-muted-foreground">GH₵</span>
+            <input
+              value={offer}
+              onChange={(event) => setOffer(event.target.value.replace(/[^0-9.]/g, ""))}
+              inputMode="decimal"
+              placeholder="Optional — name your budget to negotiate"
+              title="Optional. Offer a price you'd like to pay; the provider can accept or counter it."
+              className="h-11 w-full bg-transparent text-sm outline-none"
+            />
+          </span>
+          <span className="mt-1 block text-xs text-muted-foreground">Leave blank to let the provider quote. The provider can accept or counter your offer.</span>
         </label>
 
         <label className="block">

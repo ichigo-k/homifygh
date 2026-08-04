@@ -21,6 +21,9 @@ model User {
   lng Float?
   locationLabel String?
   interests Category[] @default([])
+  walletBalance Float @default(0)
+  notificationsEnabled Boolean @default(true)
+  locationSharingEnabled Boolean @default(false)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
   sessions Session[]
@@ -33,6 +36,33 @@ model User {
   notifications Notification[]
   disputes Dispute[] @relation("DisputeCustomer")
   auditLogs AuditLog[] @relation("AuditActor")
+  walletTransactions WalletTransaction[]
+  complaints Complaint[]
+}
+
+model WalletTransaction {
+  id String @id @default(cuid())
+  userId String
+  amount Float
+  type WalletTxnType
+  description String
+  createdAt DateTime @default(now())
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  @@index([userId, createdAt])
+}
+
+model Complaint {
+  id String @id @default(cuid())
+  userId String
+  subject String
+  category String
+  message String
+  status ComplaintStatus @default(OPEN)
+  response String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  @@index([userId, createdAt])
 }
 
 model Session {
@@ -159,6 +189,7 @@ model Booking {
   address String
   notes String?
   amount Float?
+  offeredAmount Float?
   depositAmount Float?
   paymentStatus PaymentStatus @default(UNPAID)
   paymentMethod String?
@@ -274,4 +305,13 @@ enum DisputeStatus {
   REVIEWING
   RESOLVED
   DISMISSED
+}
+enum WalletTxnType {
+  CREDIT
+  DEBIT
+}
+enum ComplaintStatus {
+  OPEN
+  IN_REVIEW
+  RESOLVED
 }
