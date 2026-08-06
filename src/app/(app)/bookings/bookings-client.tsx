@@ -15,6 +15,7 @@ export type BookingItem = {
   scheduledAt: string
   address: string
   amount: number | null
+  depositAmount: number | null
   providerName: string
   reviewed: boolean
   reviewRating: number | null
@@ -64,7 +65,7 @@ function BookingCard({ booking }: { booking: BookingItem }) {
   function run(action: () => Promise<{ ok: boolean; message?: string }>) { setMessage(""); startTransition(async () => { const result = await action(); if (!result.ok) setMessage(result.message ?? "Something went wrong.") }) }
 
   return <article className="overflow-hidden rounded-3xl border border-border bg-card shadow-[var(--shadow-sm)]">
-    <div className="p-5 sm:p-6"><div className="flex items-start gap-4"><span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-accent text-primary"><Icon className="h-5 w-5" /></span><div className="min-w-0 flex-1"><div className="flex flex-wrap items-center justify-between gap-2"><div><h2 className="font-bold">{booking.providerName}</h2><p className="text-sm text-muted-foreground">{meta?.label ?? booking.category}</p></div><span className={`rounded-full px-2.5 py-1 text-[11px] font-bold ${status.pill}`}>{status.label}</span></div><div className="mt-3 flex flex-wrap gap-x-5 gap-y-1.5 text-xs text-muted-foreground"><span className="flex items-center gap-1.5"><Calendar className="h-3.5 w-3.5" />{when(booking.scheduledAt)}</span><span className="flex items-center gap-1.5"><MapPin className="h-3.5 w-3.5" />{booking.address}</span>{booking.amount != null && <span className="font-bold text-foreground">{money(booking.amount)}</span>}</div></div></div>
+    <div className="p-5 sm:p-6"><div className="flex items-start gap-4"><span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-accent text-primary"><Icon className="h-5 w-5" /></span><div className="min-w-0 flex-1"><div className="flex flex-wrap items-center justify-between gap-2"><div><h2 className="font-bold">{booking.providerName}</h2><p className="text-sm text-muted-foreground">{meta?.label ?? booking.category}</p></div><span className={`rounded-full px-2.5 py-1 text-[11px] font-bold ${status.pill}`}>{status.label}</span></div><div className="mt-3 flex flex-wrap gap-x-5 gap-y-1.5 text-xs text-muted-foreground"><span className="flex items-center gap-1.5"><Calendar className="h-3.5 w-3.5" />{when(booking.scheduledAt)}</span><span className="flex items-center gap-1.5"><MapPin className="h-3.5 w-3.5" />{booking.address}</span>{booking.amount != null ? <span className="font-bold text-foreground">{money(booking.amount)}</span> : booking.depositAmount != null && <span className="font-bold text-primary">{money(booking.depositAmount)} <span className="font-normal text-muted-foreground">held</span></span>}</div></div></div>
       {booking.status !== "CANCELLED" && <Progress step={status.step} />}
       {message && <p className="mt-4 rounded-xl bg-destructive/10 px-3 py-2 text-sm text-destructive">{message}</p>}
     </div>

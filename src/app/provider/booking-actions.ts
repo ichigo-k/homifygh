@@ -19,7 +19,7 @@ export async function updateProviderBooking(input: ProviderBookingAction) {
   const data = updateSchema.parse(input)
   const provider = await prisma.provider.findUnique({ where: { userId: user.id }, select: { id: true, storeName: true, status: true, storeSetupComplete: true } })
   if (!provider || provider.status !== "APPROVED" || !provider.storeSetupComplete) return { ok: false as const, message: "Your store is not ready to manage bookings." }
-  const booking = await prisma.booking.findFirst({ where: { id: data.bookingId, providerId: provider.id }, select: { status: true, customerId: true } })
+  const booking = await prisma.booking.findFirst({ where: { id: data.bookingId, providerId: provider.id }, select: { status: true, customerId: true, depositAmount: true } })
   if (!booking) return { ok: false as const, message: "Booking not found." }
   const expected = data.action === "ACCEPT" || data.action === "DECLINE" ? "PENDING" : data.action === "START" ? "ACCEPTED" : "IN_PROGRESS"
   if (booking.status !== expected) return { ok: false as const, message: "This booking has already changed. Refresh and try again." }
@@ -31,10 +31,40 @@ export async function updateProviderBooking(input: ProviderBookingAction) {
       : data.action === "START"
         ? { title: "Work started", message: `${provider.storeName ?? "Your provider"} marked the job as in progress.` }
         : { title: "Work completed", message: "Your job was marked complete. You can now leave a verified review." }
-  // Critical write first; notification + audit are best-effort afterwards, so a
-  // slow side-effect can't blow the interactive-transaction limit and fail the
-  // status change (see the same fix in the customer createBooking action).
-  await prisma.booking.update({ where: { id: data.bookingId }, data: { status: nextStatus, ...(data.action === "ACCEPT" ? { amount: data.amount } : {}) } })
+
+  if (data.action === "ACCEPT") {
+    // True up the wallet hold to the provider's actual quote: charge more if
+    // it's higher than what was held at request time, refund if it's lower.
+    const held = booking.depositAmount ?? 0
+    const diff = data.amount - held
+    const accepted = await prisma.$transaction(async (tx) => {
+      if (diff > 0) {
+        const debited = await tx.user.updateMany({ where: { id: booking.customerId, walletBalance: { gte: diff } }, data: { walletBalance: { decrement: diff } } })
+        if (!debited.count) return false
+        await tx.walletTransaction.create({ data: { userId: booking.customerId, amount: diff, type: "DEBIT", description: `Booking estimate updated — ${provider.storeName ?? "provider"}` } })
+      } else if (diff < 0) {
+        await tx.user.update({ where: { id: booking.customerId }, data: { walletBalance: { increment: -diff } } })
+        await tx.walletTransaction.create({ data: { userId: booking.customerId, amount: -diff, type: "CREDIT", description: `Booking estimate updated — ${provider.storeName ?? "provider"}` } })
+      }
+      await tx.booking.update({ where: { id: data.bookingId }, data: { status: "ACCEPTED", amount: data.amount, depositAmount: data.amount } })
+      return true
+    })
+    if (!accepted) return { ok: false as const, message: "The customer's wallet balance can't cover this estimate. Ask them to top up, or quote a lower amount." }
+  } else if (data.action === "DECLINE") {
+    await prisma.$transaction(async (tx) => {
+      await tx.booking.update({ where: { id: data.bookingId }, data: { status: "CANCELLED", depositAmount: null } })
+      if (booking.depositAmount) {
+        await tx.user.update({ where: { id: booking.customerId }, data: { walletBalance: { increment: booking.depositAmount } } })
+        await tx.walletTransaction.create({ data: { userId: booking.customerId, amount: booking.depositAmount, type: "CREDIT", description: `Booking declined — refund from ${provider.storeName ?? "provider"}` } })
+      }
+    })
+  } else {
+    await prisma.booking.update({ where: { id: data.bookingId }, data: { status: nextStatus } })
+  }
+
+  // Notification + audit are best-effort afterwards, so a slow side-effect
+  // can't blow the interactive-transaction limit and fail the status change
+  // (see the same fix in the customer createBooking action).
   try {
     await notify(prisma, { userId: booking.customerId, type: "BOOKING", ...copy, href: "/bookings" })
     await audit(prisma, { actorId: user.id, action: `BOOKING_${nextStatus}`, entityType: "Booking", entityId: data.bookingId })
@@ -43,5 +73,8 @@ export async function updateProviderBooking(input: ProviderBookingAction) {
   }
   revalidatePath("/provider")
   revalidatePath("/bookings")
+  revalidatePath("/admin/bookings")
+  revalidatePath("/wallet")
+  revalidatePath("/more")
   return { ok: true as const }
 }

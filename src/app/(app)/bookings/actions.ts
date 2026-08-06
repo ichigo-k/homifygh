@@ -25,13 +25,25 @@ export async function rebookBooking(bookingId: string) {
 
 export async function cancelBooking(bookingId: string) {
   const user = await requireRole("CUSTOMER")
-  const result = await prisma.booking.updateMany({
-    where: { id: bookingId, customerId: user.id, status: { in: ["PENDING", "ACCEPTED"] } },
-    data: { status: "CANCELLED" },
+  const cancelled = await prisma.$transaction(async (tx) => {
+    const booking = await tx.booking.findFirst({
+      where: { id: bookingId, customerId: user.id, status: { in: ["PENDING", "ACCEPTED"] } },
+      select: { id: true, depositAmount: true },
+    })
+    if (!booking) return false
+    await tx.booking.update({ where: { id: booking.id }, data: { status: "CANCELLED", depositAmount: null } })
+    if (booking.depositAmount) {
+      await tx.user.update({ where: { id: user.id }, data: { walletBalance: { increment: booking.depositAmount } } })
+      await tx.walletTransaction.create({ data: { userId: user.id, amount: booking.depositAmount, type: "CREDIT", description: "Booking cancelled — refund" } })
+    }
+    return true
   })
-  if (!result.count) return { ok: false as const, message: "This booking can no longer be cancelled." }
+  if (!cancelled) return { ok: false as const, message: "This booking can no longer be cancelled." }
   revalidatePath("/bookings")
   revalidatePath("/provider")
+  revalidatePath("/admin/bookings")
+  revalidatePath("/wallet")
+  revalidatePath("/more")
   return { ok: true as const }
 }
 

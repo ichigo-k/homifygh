@@ -24,7 +24,11 @@ export async function createBooking(input: z.infer<typeof bookingSchema>) {
   if (!parsed.success) return { ok: false as const, error: "Check the booking details and try again." }
   const provider = await prisma.provider.findFirst({
     where: { id: parsed.data.providerId, status: "APPROVED", storeSetupComplete: true },
-    select: { id: true, userId: true, category: true, storeName: true, bookingLeadHours: true, workingDays: true, workStart: true, workEnd: true, unavailableDates: true, user: { select: { email: true, name: true } } },
+    select: {
+      id: true, userId: true, category: true, storeName: true, bookingLeadHours: true, workingDays: true, workStart: true, workEnd: true, unavailableDates: true,
+      user: { select: { email: true, name: true } },
+      services: { where: { active: true, startingPrice: { not: null } }, select: { startingPrice: true } },
+    },
   })
   if (!provider) return { ok: false as const, error: "This provider is not currently available." }
   const scheduledAt = new Date(parsed.data.scheduledAt)
@@ -34,22 +38,39 @@ export async function createBooking(input: z.infer<typeof bookingSchema>) {
   const conflict = await prisma.booking.findFirst({ where: { providerId: provider.id, scheduledAt, status: { in: ["PENDING", "ACCEPTED", "IN_PROGRESS"] } }, select: { id: true } })
   if (conflict) return { ok: false as const, error: "That time is already reserved. Choose another time." }
 
-  // The booking write is the only critical step. Notifications, audit log and
-  // the provider email are best-effort side-effects run AFTER the write and
-  // outside any interactive transaction — bundling them into a $transaction
-  // could exceed Neon's 5s interactive-transaction limit and make the whole
-  // booking fail with an opaque server error.
-  const booking = await prisma.booking.create({
-    data: {
-      customerId: user.id,
-      providerId: provider.id,
-      category: provider.category,
-      scheduledAt,
-      address: parsed.data.address,
-      notes: parsed.data.notes || null,
-      offeredAmount: parsed.data.offeredAmount ?? null,
-    },
+  // Hold the customer's Flex offer (or, absent one, the provider's lowest
+  // starting price) from their wallet at request time. This is a provisional
+  // hold, not a final charge — updateProviderBooking trues it up to the
+  // provider's actual quote on accept, and refunds it in full on decline.
+  const startingPrices = provider.services.map((s) => s.startingPrice).filter((p): p is number => p != null)
+  const chargeAmount = parsed.data.offeredAmount ?? (startingPrices.length ? Math.min(...startingPrices) : null)
+
+  // The booking write (plus the wallet hold, which must be atomic with it) is
+  // the only critical step. Notifications, audit log and the provider email
+  // are best-effort side-effects run AFTER the write and outside this
+  // transaction — bundling them in too could exceed Neon's 5s
+  // interactive-transaction limit and make the whole booking fail with an
+  // opaque server error.
+  const booking = await prisma.$transaction(async (tx) => {
+    if (chargeAmount != null) {
+      const debited = await tx.user.updateMany({ where: { id: user.id, walletBalance: { gte: chargeAmount } }, data: { walletBalance: { decrement: chargeAmount } } })
+      if (!debited.count) return null
+      await tx.walletTransaction.create({ data: { userId: user.id, amount: chargeAmount, type: "DEBIT", description: `Booking hold — ${provider.storeName ?? provider.user.name}` } })
+    }
+    return tx.booking.create({
+      data: {
+        customerId: user.id,
+        providerId: provider.id,
+        category: provider.category,
+        scheduledAt,
+        address: parsed.data.address,
+        notes: parsed.data.notes || null,
+        offeredAmount: parsed.data.offeredAmount ?? null,
+        depositAmount: chargeAmount,
+      },
+    })
   })
+  if (!booking) return { ok: false as const, error: "You do not have enough balance in your wallet. Top up and try again." }
 
   const when = scheduledAt.toLocaleString("en-GH")
   const offerLine = parsed.data.offeredAmount ? ` They proposed GH₵${parsed.data.offeredAmount.toLocaleString()} (Flex).` : ""
@@ -81,5 +102,7 @@ export async function createBooking(input: z.infer<typeof bookingSchema>) {
   revalidatePath("/bookings")
   revalidatePath("/provider")
   revalidatePath("/admin/bookings")
+  revalidatePath("/wallet")
+  revalidatePath("/more")
   return { ok: true as const, bookingId: booking.id }
 }
