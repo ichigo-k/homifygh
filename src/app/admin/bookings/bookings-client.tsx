@@ -15,6 +15,7 @@ export type AdminBookingItem = {
   status: string
   paymentStatus: string
   amount: number | null
+  offeredAmount: number | null
   disputeStatus: string | null
 }
 
@@ -42,7 +43,7 @@ function Row({ booking }: { booking: AdminBookingItem }) {
     <td className="p-4 font-medium">{booking.providerName}</td>
     <td className="p-4"><span className="flex items-center gap-1"><CalendarDays className="h-3.5 w-3.5" />{new Date(booking.scheduledAt).toLocaleDateString("en-GH")}</span><span className="mt-1 flex items-center gap-1 text-xs text-muted-foreground"><MapPin className="h-3.5 w-3.5" />{booking.address}</span></td>
     <td className="p-4"><span className="rounded-full bg-muted px-2 py-1 text-xs font-bold">{booking.status.replaceAll("_", " ")}</span></td>
-    <td className="p-4"><span className="flex items-center gap-1 text-xs font-semibold"><CreditCard className="h-3.5 w-3.5" />{booking.paymentStatus.replaceAll("_", " ")}</span>{booking.amount && <p className="mt-1 text-xs">GH₵{booking.amount.toLocaleString()}</p>}</td>
+    <td className="p-4"><span className="flex items-center gap-1 text-xs font-semibold"><CreditCard className="h-3.5 w-3.5" />{booking.paymentStatus.replaceAll("_", " ")}</span>{booking.amount ? <p className="mt-1 text-xs">GH₵{booking.amount.toLocaleString()}</p> : booking.offeredAmount ? <p className="mt-1 text-xs text-primary">GH₵{booking.offeredAmount.toLocaleString()} <span className="text-muted-foreground">(Flex offer)</span></p> : null}</td>
     <td className="p-4">{booking.disputeStatus ? <span className="rounded-full bg-red-500/10 px-2 py-1 text-xs font-bold text-red-600">{booking.disputeStatus}</span> : <span className="text-xs text-muted-foreground">None</span>}</td>
     <td className="p-4 text-right"><Button size="sm" variant="ghost" disabled={pending} title="Permanently delete this booking" className="rounded-lg text-muted-foreground hover:text-destructive" onClick={remove}>{pending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Trash2 className="h-3.5 w-3.5" />}</Button></td>
   </tr>

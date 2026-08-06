@@ -17,6 +17,7 @@ export default async function AdminBookingsPage() {
       status: booking.status,
       paymentStatus: booking.paymentStatus,
       amount: booking.amount,
+      offeredAmount: booking.offeredAmount,
       disputeStatus: booking.dispute?.status ?? null,
     }))} />
   </div>
