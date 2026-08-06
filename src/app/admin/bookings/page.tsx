@@ -1,7 +1,23 @@
 import { prisma } from "@/lib/prisma"
-import { CalendarDays, CreditCard, MapPin } from "lucide-react"
+import { AdminBookingsClient } from "./bookings-client"
 
 export default async function AdminBookingsPage() {
   const bookings = await prisma.booking.findMany({ orderBy: { createdAt: "desc" }, take: 100, include: { customer: { select: { name: true, email: true } }, provider: { select: { storeName: true, user: { select: { name: true } } } }, dispute: { select: { status: true } } } })
-  return <div className="mx-auto max-w-7xl p-6"><p className="text-xs font-bold uppercase tracking-wider text-primary">Operations</p><h1 className="mt-1 text-3xl font-extrabold">Booking oversight</h1><p className="mt-1 text-sm text-muted-foreground">Monitor job progress, payments and disputes across the marketplace.</p><div className="mt-6 overflow-x-auto rounded-3xl border border-border bg-card"><table className="w-full min-w-[900px] text-left text-sm"><thead className="border-b border-border bg-muted/30 text-xs uppercase tracking-wider text-muted-foreground"><tr><th className="p-4">Customer</th><th className="p-4">Provider</th><th className="p-4">Schedule</th><th className="p-4">Job</th><th className="p-4">Payment</th><th className="p-4">Issue</th></tr></thead><tbody className="divide-y divide-border">{bookings.map((booking) => <tr key={booking.id}><td className="p-4"><p className="font-semibold">{booking.customer.name}</p><p className="text-xs text-muted-foreground">{booking.customer.email}</p></td><td className="p-4 font-medium">{booking.provider.storeName ?? booking.provider.user.name}</td><td className="p-4"><span className="flex items-center gap-1"><CalendarDays className="h-3.5 w-3.5" />{booking.scheduledAt.toLocaleDateString("en-GH")}</span><span className="mt-1 flex items-center gap-1 text-xs text-muted-foreground"><MapPin className="h-3.5 w-3.5" />{booking.address}</span></td><td className="p-4"><span className="rounded-full bg-muted px-2 py-1 text-xs font-bold">{booking.status.replaceAll("_", " ")}</span></td><td className="p-4"><span className="flex items-center gap-1 text-xs font-semibold"><CreditCard className="h-3.5 w-3.5" />{booking.paymentStatus.replaceAll("_", " ")}</span>{booking.amount && <p className="mt-1 text-xs">GH₵{booking.amount.toLocaleString()}</p>}</td><td className="p-4">{booking.dispute ? <span className="rounded-full bg-red-500/10 px-2 py-1 text-xs font-bold text-red-600">{booking.dispute.status}</span> : <span className="text-xs text-muted-foreground">None</span>}</td></tr>)}</tbody></table></div></div>
+  return <div className="mx-auto max-w-7xl p-6">
+    <p className="text-xs font-bold uppercase tracking-wider text-primary">Operations</p>
+    <h1 className="mt-1 text-3xl font-extrabold">Booking oversight</h1>
+    <p className="mt-1 text-sm text-muted-foreground">Monitor job progress, payments and disputes across the marketplace.</p>
+    <AdminBookingsClient bookings={bookings.map((booking) => ({
+      id: booking.id,
+      customerName: booking.customer.name,
+      customerEmail: booking.customer.email,
+      providerName: booking.provider.storeName ?? booking.provider.user.name,
+      scheduledAt: booking.scheduledAt.toISOString(),
+      address: booking.address,
+      status: booking.status,
+      paymentStatus: booking.paymentStatus,
+      amount: booking.amount,
+      disputeStatus: booking.dispute?.status ?? null,
+    }))} />
+  </div>
 }
