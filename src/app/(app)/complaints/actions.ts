@@ -22,3 +22,12 @@ export async function submitComplaint(input: z.infer<typeof complaintSchema>) {
   revalidatePath("/complaints")
   return { ok: true as const }
 }
+
+export async function deleteComplaint(complaintId: string) {
+  const user = await requireRole("CUSTOMER")
+  const result = await prisma.complaint.deleteMany({ where: { id: complaintId, userId: user.id } })
+  if (!result.count) return { ok: false as const, message: "Complaint not found." }
+  revalidatePath("/complaints")
+  revalidatePath("/admin/disputes")
+  return { ok: true as const }
+}

@@ -1,9 +1,9 @@
 "use client"
 
 import { useState, useTransition } from "react"
-import { CheckCircle2, Loader2, MessageSquareWarning, Send } from "lucide-react"
+import { CheckCircle2, Loader2, MessageSquareWarning, Send, Trash2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
-import { submitComplaint } from "./actions"
+import { deleteComplaint, submitComplaint } from "./actions"
 
 export type ComplaintItem = {
   id: string
@@ -83,23 +83,35 @@ export function ComplaintsClient({ complaints }: { complaints: ComplaintItem[] }
         <div className="rounded-3xl border border-border bg-card p-5">
           <h2 className="font-bold">Your complaints</h2>
           <div className="mt-3 space-y-3">
-            {complaints.map((c) => {
-              const s = STATUS[c.status]
-              return (
-                <div key={c.id} className="rounded-2xl border border-border p-4">
-                  <div className="flex items-center justify-between gap-2">
-                    <p className="font-semibold">{c.subject}</p>
-                    <span className={`rounded-full px-2.5 py-1 text-[11px] font-bold ${s.tone}`}>{s.label}</span>
-                  </div>
-                  <p className="mt-1 text-sm text-muted-foreground">{c.message}</p>
-                  {c.response && <p className="mt-2 rounded-xl bg-muted/40 px-3 py-2 text-sm"><span className="font-semibold">Response: </span>{c.response}</p>}
-                  <p className="mt-2 text-xs text-muted-foreground">{new Date(c.createdAt).toLocaleDateString("en-GH", { day: "numeric", month: "short", year: "numeric" })}</p>
-                </div>
-              )
-            })}
+            {complaints.map((c) => <ComplaintCard key={c.id} complaint={c} />)}
           </div>
         </div>
       )}
+    </div>
+  )
+}
+
+function ComplaintCard({ complaint: c }: { complaint: ComplaintItem }) {
+  const [pending, startTransition] = useTransition()
+  const s = STATUS[c.status]
+  function remove() {
+    if (!confirm("Delete this complaint? This cannot be undone.")) return
+    startTransition(async () => { await deleteComplaint(c.id) })
+  }
+  return (
+    <div className="rounded-2xl border border-border p-4">
+      <div className="flex items-center justify-between gap-2">
+        <p className="font-semibold">{c.subject}</p>
+        <div className="flex items-center gap-2">
+          <span className={`rounded-full px-2.5 py-1 text-[11px] font-bold ${s.tone}`}>{s.label}</span>
+          <Button size="sm" variant="ghost" disabled={pending} title="Delete this complaint" className="rounded-lg text-muted-foreground hover:text-destructive" onClick={remove}>
+            {pending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Trash2 className="h-3.5 w-3.5" />}
+          </Button>
+        </div>
+      </div>
+      <p className="mt-1 text-sm text-muted-foreground">{c.message}</p>
+      {c.response && <p className="mt-2 rounded-xl bg-muted/40 px-3 py-2 text-sm"><span className="font-semibold">Response: </span>{c.response}</p>}
+      <p className="mt-2 text-xs text-muted-foreground">{new Date(c.createdAt).toLocaleDateString("en-GH", { day: "numeric", month: "short", year: "numeric" })}</p>
     </div>
   )
 }

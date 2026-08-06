@@ -1,9 +1,9 @@
 "use client"
 
 import { useState, useTransition } from "react"
-import { AlertTriangle, Loader2, MessageSquareWarning } from "lucide-react"
+import { AlertTriangle, Loader2, MessageSquareWarning, Trash2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
-import { resolveDispute, resolveComplaint } from "./actions"
+import { resolveDispute, resolveComplaint, deleteComplaintAdmin } from "./actions"
 
 type Dispute = { id: string; reason: string; details: string; status: "OPEN" | "REVIEWING" | "RESOLVED" | "DISMISSED"; resolution: string | null; customer: string; customerEmail: string; provider: string; amount: number | null; scheduledAt: string }
 type Complaint = { id: string; subject: string; category: string; message: string; status: "OPEN" | "IN_REVIEW" | "RESOLVED"; response: string | null; customer: string; customerEmail: string; createdAt: string }
@@ -63,11 +63,20 @@ function ComplaintsList({ complaints }: { complaints: Complaint[] }) {
   const [notes, setNotes] = useState<Record<string, string>>({})
   const [pending, startTransition] = useTransition()
   if (!complaints.length) return <EmptyState label="No complaints yet." />
+  function remove(id: string) {
+    if (!confirm("Permanently delete this complaint? This cannot be undone.")) return
+    startTransition(async () => { await deleteComplaintAdmin(id) })
+  }
   return <div className="space-y-4">
     {complaints.map((item) => { const status = COMPLAINT_STATUS[item.status]; return <article key={item.id} className="rounded-3xl border border-border bg-card p-5">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div><div className="flex items-center gap-2"><MessageSquareWarning className="h-4 w-4 text-amber-500" /><h2 className="font-bold">{item.subject}</h2></div><p className="mt-1 text-xs text-muted-foreground">{item.customer} · {item.customerEmail} · {item.category.replaceAll("_", " ")} · {new Date(item.createdAt).toLocaleDateString("en-GH")}</p></div>
-        <span className={`rounded-full px-2.5 py-1 text-xs font-bold ${status.tone}`}>{status.label}</span>
+        <div className="flex items-center gap-2">
+          <span className={`rounded-full px-2.5 py-1 text-xs font-bold ${status.tone}`}>{status.label}</span>
+          <Button size="sm" variant="ghost" disabled={pending} title="Delete this complaint" className="rounded-lg text-muted-foreground hover:text-destructive" onClick={() => remove(item.id)}>
+            {pending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Trash2 className="h-3.5 w-3.5" />}
+          </Button>
+        </div>
       </div>
       <p className="mt-4 text-sm leading-6">{item.message}</p>
       {item.status !== "RESOLVED" ? <div className="mt-4">
