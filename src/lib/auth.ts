@@ -2,7 +2,7 @@ import { betterAuth } from "better-auth"
 import { prismaAdapter } from "better-auth/adapters/prisma"
 import { emailOTP } from "better-auth/plugins"
 import { prisma } from "./prisma"
-import { sendOtpEmail } from "./email"
+import { sendOtpEmail, sendPasswordResetOtpEmail } from "./email"
 
 export const auth = betterAuth({
   database: prismaAdapter(prisma, { provider: "postgresql" }),
@@ -31,8 +31,9 @@ export const auth = betterAuth({
       otpLength: 6,
       expiresIn: 600, // 10 minutes
       sendVerificationOnSignUp: true,
-      async sendVerificationOTP({ email, otp }) {
-        await sendOtpEmail(email, otp)
+      async sendVerificationOTP({ email, otp, type }) {
+        if (type === "forget-password") await sendPasswordResetOtpEmail(email, otp)
+        else await sendOtpEmail(email, otp)
       },
     }),
   ],

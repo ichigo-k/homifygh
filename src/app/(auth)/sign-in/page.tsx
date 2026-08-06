@@ -1,15 +1,17 @@
 "use client"
 
-import { useState } from "react"
+import { Suspense, useState } from "react"
 import Link from "next/link"
-import { useRouter } from "next/navigation"
+import { useRouter, useSearchParams } from "next/navigation"
 import { signIn } from "@/lib/auth-client"
 import { Button } from "@/components/ui/button"
 import { Field } from "@/components/auth/field"
-import { Mail, Lock, Loader2, ArrowRight, AlertCircle } from "lucide-react"
+import { Mail, Lock, Loader2, ArrowRight, AlertCircle, CheckCircle2 } from "lucide-react"
 
-export default function SignInPage() {
+function SignInInner() {
   const router = useRouter()
+  const searchParams = useSearchParams()
+  const justReset = searchParams.get("reset") === "success"
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState("")
   const [form, setForm] = useState({ email: "", password: "" })
@@ -57,6 +59,13 @@ export default function SignInPage() {
           Sign in to manage your bookings and saved pros.
         </p>
       </div>
+
+      {justReset && (
+        <div className="mt-6 flex items-start gap-2 rounded-xl bg-primary/10 px-3.5 py-3 text-sm text-primary">
+          <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0" />
+          <span>Password reset. Sign in with your new password.</span>
+        </div>
+      )}
 
       <form onSubmit={handleSubmit} className="mt-8 space-y-4">
         <Field
@@ -121,5 +130,13 @@ export default function SignInPage() {
         </Link>
       </p>
     </div>
+  )
+}
+
+export default function SignInPage() {
+  return (
+    <Suspense fallback={<Loader2 className="mx-auto h-5 w-5 animate-spin text-muted-foreground" />}>
+      <SignInInner />
+    </Suspense>
   )
 }

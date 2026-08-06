@@ -83,6 +83,27 @@ export async function sendOtpEmail(to: string, otp: string) {
   })
 }
 
+export async function sendPasswordResetOtpEmail(to: string, otp: string) {
+  await deliver({
+    to,
+    logLine: `Password reset code: ${otp}`,
+    subject: `${otp} is your Homify password reset code`,
+    html: shell(
+      "Reset your password",
+      `<p style="color:#555;line-height:1.6;margin:0 0 20px">
+         Enter this code to reset your password. It expires in 10 minutes.
+       </p>
+       <div style="font-size:34px;font-weight:800;letter-spacing:10px;text-align:center;
+                   background:#f0fdf4;color:#16a34a;border-radius:14px;padding:18px 0">
+         ${otp}
+       </div>
+       <p style="color:#999;font-size:13px;margin:20px 0 0">
+         Didn't request this? You can safely ignore this email — your password won't change.
+       </p>`
+    ),
+  })
+}
+
 export async function sendBookingRequestEmail(opts: {
   to: string
   providerName: string
