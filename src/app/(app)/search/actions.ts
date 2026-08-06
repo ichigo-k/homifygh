@@ -21,18 +21,18 @@ const bookingSchema = z.object({
 export async function createBooking(input: z.infer<typeof bookingSchema>) {
   const user = await requireRole("CUSTOMER")
   const parsed = bookingSchema.safeParse(input)
-  if (!parsed.success) throw new Error("Check the booking details and try again.")
+  if (!parsed.success) return { ok: false as const, error: "Check the booking details and try again." }
   const provider = await prisma.provider.findFirst({
     where: { id: parsed.data.providerId, status: "APPROVED", storeSetupComplete: true },
     select: { id: true, userId: true, category: true, storeName: true, bookingLeadHours: true, workingDays: true, workStart: true, workEnd: true, unavailableDates: true, user: { select: { email: true, name: true } } },
   })
-  if (!provider) throw new Error("This provider is not currently available.")
+  if (!provider) return { ok: false as const, error: "This provider is not currently available." }
   const scheduledAt = new Date(parsed.data.scheduledAt)
-  if (Number.isNaN(scheduledAt.getTime())) throw new Error("Pick a valid date and time.")
+  if (Number.isNaN(scheduledAt.getTime())) return { ok: false as const, error: "Pick a valid date and time." }
   const availabilityMessage = availabilityError(provider, scheduledAt)
-  if (availabilityMessage) throw new Error(availabilityMessage)
+  if (availabilityMessage) return { ok: false as const, error: availabilityMessage }
   const conflict = await prisma.booking.findFirst({ where: { providerId: provider.id, scheduledAt, status: { in: ["PENDING", "ACCEPTED", "IN_PROGRESS"] } }, select: { id: true } })
-  if (conflict) throw new Error("That time is already reserved. Choose another time.")
+  if (conflict) return { ok: false as const, error: "That time is already reserved. Choose another time." }
 
   // The booking write is the only critical step. Notifications, audit log and
   // the provider email are best-effort side-effects run AFTER the write and

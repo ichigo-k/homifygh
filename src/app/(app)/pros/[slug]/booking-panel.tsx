@@ -71,13 +71,17 @@ export function BookingPanel({
     startTransition(async () => {
       try {
         const offeredAmount = offer.trim() ? Number(offer) : undefined
-        await createBooking({
+        const result = await createBooking({
           providerId,
           scheduledAt: new Date(scheduledAt).toISOString(),
           address,
           notes,
           ...(offeredAmount && offeredAmount > 0 ? { offeredAmount } : {}),
         })
+        if (!result.ok) {
+          setError(result.error)
+          return
+        }
         setComplete(true)
       } catch (caught) {
         setError(
