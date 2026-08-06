@@ -50,6 +50,7 @@ export async function deleteBooking(bookingId: string) {
     prisma.booking.delete({ where: { id: bookingId } }),
   ])
   revalidatePath("/bookings")
+  revalidatePath("/admin/bookings")
   return { ok: true as const }
 }
 
