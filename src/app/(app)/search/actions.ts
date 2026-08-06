@@ -80,5 +80,6 @@ export async function createBooking(input: z.infer<typeof bookingSchema>) {
 
   revalidatePath("/bookings")
   revalidatePath("/provider")
+  revalidatePath("/admin/bookings")
   return { ok: true as const, bookingId: booking.id }
 }
