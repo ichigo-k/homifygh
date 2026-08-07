@@ -1,9 +1,11 @@
 import { prisma } from "@/lib/prisma"
 import { AdminBookingsClient } from "./bookings-client"
+import { BackButton } from "@/components/back-button"
 
 export default async function AdminBookingsPage() {
   const bookings = await prisma.booking.findMany({ orderBy: { createdAt: "desc" }, take: 100, include: { customer: { select: { name: true, email: true } }, provider: { select: { storeName: true, user: { select: { name: true } } } }, dispute: { select: { status: true } } } })
   return <div className="mx-auto max-w-7xl p-6">
+    <BackButton fallback="/admin" className="mb-4" />
     <p className="text-xs font-bold uppercase tracking-wider text-primary">Operations</p>
     <h1 className="mt-1 text-3xl font-extrabold">Booking oversight</h1>
     <p className="mt-1 text-sm text-muted-foreground">Monitor job progress, payments and disputes across the marketplace.</p>
@@ -18,6 +20,7 @@ export default async function AdminBookingsPage() {
       paymentStatus: booking.paymentStatus,
       amount: booking.amount,
       depositAmount: booking.depositAmount,
+      counterAmount: booking.counterAmount,
       disputeStatus: booking.dispute?.status ?? null,
     }))} />
   </div>
