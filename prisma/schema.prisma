@@ -191,6 +191,10 @@ model Booking {
   amount Float?
   offeredAmount Float?
   depositAmount Float?
+  // Settlement, written once when the job completes and the hold is released.
+  platformFee Float?
+  providerPayout Float?
+  payoutAt DateTime?
   paymentStatus PaymentStatus @default(UNPAID)
   paymentMethod String?
   paymentReference String? @unique
