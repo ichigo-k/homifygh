@@ -81,7 +81,10 @@ function ServiceCatalogue({ services }: { services: Service[] }) {
       <textarea value={description} onChange={(e) => setDescription(e.target.value)} rows={2} maxLength={300} placeholder="Short description" className={areaClass} />
       <input type="number" min="1" value={price} onChange={(e) => setPrice(e.target.value)} placeholder="Starting price in GH₵ (optional)" className={inputClass} />
       <ErrorNote message={error} />
-      <Button className="w-full rounded-xl" disabled={pending || name.trim().length < 2} onClick={create}>{pending ? <Loader2 className="animate-spin" /> : <Plus className="h-4 w-4" />}Add service</Button>
+      {/* A disabled button whose only cue is 50% opacity reads as broken on a
+          phone, so say what unlocks it rather than leaving it greyed in silence. */}
+      {name.trim().length < 2 && <p className="text-xs text-muted-foreground">Enter a service name to add it to your catalogue.</p>}
+      <Button className="h-11 w-full rounded-xl" disabled={pending || name.trim().length < 2} onClick={create}>{pending ? <Loader2 className="animate-spin" /> : <Plus className="h-4 w-4" />}Add service</Button>
     </div>
     <div className="mt-5 space-y-2">
       {services.length === 0
@@ -166,7 +169,8 @@ function PortfolioGallery({ items }: { items: Portfolio[] }) {
       <UploadField label="Upload a completed project photo" value={imageUrl} onChange={setImageUrl} />
       <input value={caption} onChange={(e) => setCaption(e.target.value)} maxLength={120} placeholder="Caption (optional)" className={`mt-3 ${inputClass}`} />
       <ErrorNote message={error} className="mt-3" />
-      <Button className="mt-3 w-full rounded-xl" disabled={pending || !imageUrl} onClick={create}>{pending ? <Loader2 className="animate-spin" /> : <Plus className="h-4 w-4" />}Add to portfolio</Button>
+      {!imageUrl && <p className="mt-3 text-xs text-muted-foreground">Upload a photo to add it to your portfolio.</p>}
+      <Button className="mt-3 h-11 w-full rounded-xl" disabled={pending || !imageUrl} onClick={create}>{pending ? <Loader2 className="animate-spin" /> : <Plus className="h-4 w-4" />}Add to portfolio</Button>
     </div>
     {items.length > 0 && <p className="mt-5 text-xs text-muted-foreground">First photo leads your public gallery — use the arrows to order your best work.</p>}
     <div className="mt-3 grid grid-cols-2 gap-3">
