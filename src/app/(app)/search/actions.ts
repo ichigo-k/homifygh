@@ -44,6 +44,9 @@ export async function createBooking(input: z.infer<typeof bookingSchema>) {
   // provider's actual quote on accept, and refunds it in full on decline.
   const startingPrices = provider.services.map((s) => s.startingPrice).filter((p): p is number => p != null)
   const chargeAmount = parsed.data.offeredAmount ?? (startingPrices.length ? Math.min(...startingPrices) : null)
+  // Without a price there is nothing to hold, and the job would reach a provider
+  // with no money behind it. Ask the customer to name their budget instead.
+  if (chargeAmount == null) return { ok: false as const, error: "This provider hasn't listed a price yet. Enter the amount you're offering to continue." }
 
   // The booking write (plus the wallet hold, which must be atomic with it) is
   // the only critical step. Notifications, audit log and the provider email
@@ -52,11 +55,9 @@ export async function createBooking(input: z.infer<typeof bookingSchema>) {
   // interactive-transaction limit and make the whole booking fail with an
   // opaque server error.
   const booking = await prisma.$transaction(async (tx) => {
-    if (chargeAmount != null) {
-      const debited = await tx.user.updateMany({ where: { id: user.id, walletBalance: { gte: chargeAmount } }, data: { walletBalance: { decrement: chargeAmount } } })
-      if (!debited.count) return null
-      await tx.walletTransaction.create({ data: { userId: user.id, amount: chargeAmount, type: "DEBIT", description: `Booking hold — ${provider.storeName ?? provider.user.name}` } })
-    }
+    const debited = await tx.user.updateMany({ where: { id: user.id, walletBalance: { gte: chargeAmount } }, data: { walletBalance: { decrement: chargeAmount } } })
+    if (!debited.count) return null
+    await tx.walletTransaction.create({ data: { userId: user.id, amount: chargeAmount, type: "DEBIT", description: `Booking hold — ${provider.storeName ?? provider.user.name}` } })
     return tx.booking.create({
       data: {
         customerId: user.id,

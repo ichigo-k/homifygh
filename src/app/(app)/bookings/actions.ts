@@ -13,17 +13,43 @@ export async function rebookBooking(bookingId: string) {
   const user = await requireRole("CUSTOMER")
   const previous = await prisma.booking.findFirst({
     where: { id: bookingId, customerId: user.id },
-    include: { provider: { select: { status: true, storeSetupComplete: true } } },
+    include: {
+      provider: {
+        select: {
+          status: true, storeSetupComplete: true, storeName: true,
+          services: { where: { active: true, startingPrice: { not: null } }, select: { startingPrice: true } },
+        },
+      },
+    },
   })
   if (!previous) return { ok: false as const, message: "Booking not found." }
   if (previous.provider.status !== "APPROVED" || !previous.provider.storeSetupComplete) {
     return { ok: false as const, message: "This provider is not currently accepting bookings." }
   }
+  // Rebooking used to create a job with no wallet hold at all, so the same
+  // service cost nothing up front through "Book again" and was held for
+  // through the normal flow. Price it the way a fresh booking is priced:
+  // what was last agreed, falling back to the provider's lowest listed price.
+  const startingPrices = previous.provider.services.map((s) => s.startingPrice).filter((p): p is number => p != null)
+  const chargeAmount = previous.amount ?? (startingPrices.length ? Math.min(...startingPrices) : null)
+  if (chargeAmount == null) return { ok: false as const, message: "This provider hasn't listed a price yet. Book from their profile so you can name your budget." }
+
   const scheduledAt = new Date()
   scheduledAt.setDate(scheduledAt.getDate() + 7)
   scheduledAt.setHours(10, 0, 0, 0)
-  await prisma.booking.create({ data: { customerId: user.id, providerId: previous.providerId, category: previous.category, scheduledAt, address: previous.address, notes: previous.notes } })
+
+  const created = await prisma.$transaction(async (tx) => {
+    const debited = await tx.user.updateMany({ where: { id: user.id, walletBalance: { gte: chargeAmount } }, data: { walletBalance: { decrement: chargeAmount } } })
+    if (!debited.count) return null
+    await tx.walletTransaction.create({ data: { userId: user.id, amount: chargeAmount, type: "DEBIT", description: `Booking hold — ${previous.provider.storeName ?? "provider"}` } })
+    return tx.booking.create({ data: { customerId: user.id, providerId: previous.providerId, category: previous.category, scheduledAt, address: previous.address, notes: previous.notes, depositAmount: chargeAmount } })
+  })
+  if (!created) return { ok: false as const, message: `You need GH₵${chargeAmount.toLocaleString()} in your wallet to rebook this job. Top up and try again.` }
+
   revalidatePath("/bookings")
+  revalidatePath("/provider")
+  revalidatePath("/wallet")
+  revalidatePath("/more")
   return { ok: true as const }
 }
 
