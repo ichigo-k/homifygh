@@ -24,7 +24,20 @@ const NAV: { label: string; href: string; icon: LucideIcon; hint: string }[] = [
 
 const roleLabels: Record<string, string> = { ADMIN: "Admin", PROVIDER: "Provider", CUSTOMER: "Customer" }
 
-export function AppShell({ user, children }: { user: ShellUser; children: React.ReactNode }) {
+/** Caps the number so a long backlog can't stretch the tab bar out of shape. */
+function UnreadBadge({ count, className }: { count: number; className?: string }) {
+  if (count < 1) return null
+  return (
+    <span
+      aria-label={`${count} unread notification${count === 1 ? "" : "s"}`}
+      className={`pointer-events-none flex h-4 min-w-4 items-center justify-center rounded-full bg-destructive px-1 text-[10px] font-bold leading-none text-white ${className ?? ""}`}
+    >
+      {count > 9 ? "9+" : count}
+    </span>
+  )
+}
+
+export function AppShell({ user, unread = 0, children }: { user: ShellUser; unread?: number; children: React.ReactNode }) {
   const pathname = usePathname()
   const isActive = (href: string) => pathname === href || pathname.startsWith(href + "/")
 
@@ -46,6 +59,7 @@ export function AppShell({ user, children }: { user: ShellUser; children: React.
                 >
                   <Icon className="h-4 w-4" />
                   {label}
+                  {href === "/notifications" && <UnreadBadge count={unread} />}
                 </Link>
               ))}
             </nav>
@@ -106,7 +120,12 @@ export function AppShell({ user, children }: { user: ShellUser; children: React.
                   aria-current={active ? "page" : undefined}
                   className={`flex min-h-[3.25rem] flex-col items-center justify-center gap-0.5 px-1 py-2 text-[11px] font-semibold transition-colors ${active ? "text-primary" : "text-muted-foreground"}`}
                 >
-                  <Icon className={`h-5 w-5 ${active ? "" : "opacity-80"}`} />
+                  {/* The badge is pinned to the icon rather than placed in flow so
+                      it can't shift the evenly-spaced tab widths. */}
+                  <span className="relative">
+                    <Icon className={`h-5 w-5 ${active ? "" : "opacity-80"}`} />
+                    {href === "/notifications" && <UnreadBadge count={unread} className="absolute -right-2.5 -top-1.5" />}
+                  </span>
                   <span className="w-full truncate text-center leading-tight">{label}</span>
                 </Link>
               </li>
