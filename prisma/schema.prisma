@@ -217,6 +217,10 @@ model Booking {
   notes String?
   amount Float?
   offeredAmount Float?
+  // A price the provider proposed back. Non-null means the booking is waiting
+  // on the customer to accept or reject it; no money moves until they do.
+  counterAmount Float?
+  counterAt DateTime?
   depositAmount Float?
   // Settlement, written once when the job completes and the hold is released.
   platformFee Float?

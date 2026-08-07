@@ -6,7 +6,7 @@ import { Calendar, CalendarCheck, CheckCircle2, Loader2, MapPin, Plus, RotateCcw
 import { CATEGORIES, type CategorySlug } from "@/lib/categories"
 import { Button } from "@/components/ui/button"
 import { BackButton } from "@/components/back-button"
-import { cancelBooking, deleteBooking, rebookBooking, submitReview } from "./actions"
+import { cancelBooking, deleteBooking, rebookBooking, respondToCounter, submitReview } from "./actions"
 
 export type BookingItem = {
   id: string
@@ -16,6 +16,8 @@ export type BookingItem = {
   address: string
   amount: number | null
   depositAmount: number | null
+  /** Set when the provider has proposed a price that needs an answer. */
+  counterAmount: number | null
   providerName: string
   reviewed: boolean
   reviewRating: number | null
@@ -62,11 +64,28 @@ function BookingCard({ booking }: { booking: BookingItem }) {
   const Icon = meta?.icon ?? Sparkles
   const status = STATUS[booking.status]
   const canCancel = ["PENDING", "ACCEPTED"].includes(booking.status)
+  const awaitingYou = booking.status === "PENDING" && booking.counterAmount != null
   function run(action: () => Promise<{ ok: boolean; message?: string }>) { setMessage(""); startTransition(async () => { const result = await action(); if (!result.ok) setMessage(result.message ?? "Something went wrong.") }) }
 
   return <article className="overflow-hidden rounded-3xl border border-border bg-card shadow-[var(--shadow-sm)]">
-    <div className="p-5 sm:p-6"><div className="flex items-start gap-4"><span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-accent text-primary"><Icon className="h-5 w-5" /></span><div className="min-w-0 flex-1"><div className="flex flex-wrap items-center justify-between gap-2"><div><h2 className="font-bold">{booking.providerName}</h2><p className="text-sm text-muted-foreground">{meta?.label ?? booking.category}</p></div><span className={`rounded-full px-2.5 py-1 text-[11px] font-bold ${status.pill}`}>{status.label}</span></div><div className="mt-3 flex flex-wrap gap-x-5 gap-y-1.5 text-xs text-muted-foreground"><span className="flex items-center gap-1.5"><Calendar className="h-3.5 w-3.5" />{when(booking.scheduledAt)}</span><span className="flex items-center gap-1.5"><MapPin className="h-3.5 w-3.5" />{booking.address}</span>{booking.amount != null ? <span className="font-bold text-foreground">{money(booking.amount)}</span> : booking.depositAmount != null && <span className="font-bold text-primary">{money(booking.depositAmount)} <span className="font-normal text-muted-foreground">held</span></span>}</div></div></div>
+    <div className="p-5 sm:p-6"><div className="flex items-start gap-4"><span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-accent text-primary"><Icon className="h-5 w-5" /></span><div className="min-w-0 flex-1"><div className="flex flex-wrap items-center justify-between gap-2"><div><h2 className="font-bold">{booking.providerName}</h2><p className="text-sm text-muted-foreground">{meta?.label ?? booking.category}</p></div><span className={`rounded-full px-2.5 py-1 text-[11px] font-bold ${awaitingYou ? "bg-primary/10 text-primary" : status.pill}`}>{awaitingYou ? "Needs your answer" : status.label}</span></div><div className="mt-3 flex flex-wrap gap-x-5 gap-y-1.5 text-xs text-muted-foreground"><span className="flex items-center gap-1.5"><Calendar className="h-3.5 w-3.5" />{when(booking.scheduledAt)}</span><span className="flex items-center gap-1.5"><MapPin className="h-3.5 w-3.5" />{booking.address}</span>{booking.amount != null ? <span className="font-bold text-foreground">{money(booking.amount)}</span> : booking.depositAmount != null && <span className="font-bold text-primary">{money(booking.depositAmount)} <span className="font-normal text-muted-foreground">held</span></span>}</div></div></div>
       {booking.status !== "CANCELLED" && <Progress step={status.step} />}
+      {awaitingYou && booking.counterAmount != null && (
+        <div className="mt-4 rounded-2xl border border-primary/30 bg-primary/5 p-4">
+          <p className="text-sm font-bold">{booking.providerName} proposed {money(booking.counterAmount)}</p>
+          <p className="mt-1 text-xs text-muted-foreground">
+            {booking.depositAmount != null && booking.counterAmount > booking.depositAmount
+              ? `That's ${money(booking.counterAmount - booking.depositAmount)} more than the ${money(booking.depositAmount)} you have held. Accepting takes the difference from your wallet.`
+              : booking.depositAmount != null && booking.counterAmount < booking.depositAmount
+                ? `That's less than the ${money(booking.depositAmount)} you have held. Accepting returns the difference to your wallet.`
+                : "Accepting holds this amount from your wallet."}
+          </p>
+          <div className="mt-3 flex flex-wrap gap-2">
+            <Button size="sm" disabled={pending} className="rounded-lg" onClick={() => run(() => respondToCounter(booking.id, true))}>{pending ? <Loader2 className="animate-spin" /> : <><CheckCircle2 className="mr-1 h-3.5 w-3.5" />Accept {money(booking.counterAmount)}</>}</Button>
+            <Button size="sm" variant="outline" disabled={pending} className="rounded-lg text-destructive" onClick={() => run(() => respondToCounter(booking.id, false))}><XCircle className="mr-1 h-3.5 w-3.5" />Decline and cancel</Button>
+          </div>
+        </div>
+      )}
       {message && <p className="mt-4 rounded-xl bg-destructive/10 px-3 py-2 text-sm text-destructive">{message}</p>}
     </div>
     <div className="flex flex-wrap items-center justify-end gap-2 border-t border-border bg-muted/20 px-5 py-3">

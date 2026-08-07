@@ -4,6 +4,10 @@ import { revalidatePath } from "next/cache"
 import { z } from "zod"
 import { prisma } from "@/lib/prisma"
 import { requireRole } from "@/lib/session"
+import { audit, notify } from "@/lib/events"
+
+/** Thrown inside a transaction to roll back a top-up that can't be covered. */
+class InsufficientFunds extends Error {}
 
 export async function rebookBooking(bookingId: string) {
   const user = await requireRole("CUSTOMER")
@@ -31,7 +35,7 @@ export async function cancelBooking(bookingId: string) {
       select: { id: true, depositAmount: true },
     })
     if (!booking) return false
-    await tx.booking.update({ where: { id: booking.id }, data: { status: "CANCELLED", depositAmount: null } })
+    await tx.booking.update({ where: { id: booking.id }, data: { status: "CANCELLED", depositAmount: null, counterAmount: null, counterAt: null } })
     if (booking.depositAmount) {
       await tx.user.update({ where: { id: user.id }, data: { walletBalance: { increment: booking.depositAmount } } })
       await tx.walletTransaction.create({ data: { userId: user.id, amount: booking.depositAmount, type: "CREDIT", description: "Booking cancelled — refund" } })
@@ -39,6 +43,78 @@ export async function cancelBooking(bookingId: string) {
     return true
   })
   if (!cancelled) return { ok: false as const, message: "This booking can no longer be cancelled." }
+  revalidatePath("/bookings")
+  revalidatePath("/provider")
+  revalidatePath("/admin/bookings")
+  revalidatePath("/wallet")
+  revalidatePath("/more")
+  return { ok: true as const }
+}
+
+/**
+ * Answers a price the provider proposed. This is the only place the customer's
+ * hold changes size after booking: accepting trues it up to the new price,
+ * rejecting cancels the job and refunds in full. Nothing moved while the
+ * counter was merely outstanding.
+ */
+export async function respondToCounter(bookingId: string, accept: boolean) {
+  const user = await requireRole("CUSTOMER")
+  const booking = await prisma.booking.findFirst({
+    where: { id: bookingId, customerId: user.id, status: "PENDING", counterAmount: { not: null } },
+    select: { id: true, counterAmount: true, depositAmount: true, provider: { select: { userId: true, storeName: true } } },
+  })
+  if (!booking) return { ok: false as const, message: "This price is no longer on the table." }
+  const counter = booking.counterAmount!
+  const held = booking.depositAmount ?? 0
+  const diff = counter - held
+
+  const outcome = await prisma.$transaction(async (tx) => {
+    // Claiming the counter is what makes this safe to double-submit: the first
+    // response clears counterAmount, so a second finds nothing to act on.
+    const { count } = await tx.booking.updateMany({
+      where: { id: bookingId, status: "PENDING", counterAmount: { not: null } },
+      data: accept
+        ? { status: "ACCEPTED", amount: counter, depositAmount: counter, counterAmount: null, counterAt: null }
+        : { status: "CANCELLED", depositAmount: null, counterAmount: null, counterAt: null },
+    })
+    if (!count) return "STALE" as const
+    if (!accept) {
+      if (held > 0) {
+        await tx.user.update({ where: { id: user.id }, data: { walletBalance: { increment: held } } })
+        await tx.walletTransaction.create({ data: { userId: user.id, amount: held, type: "CREDIT", description: `Price declined — refund from ${booking.provider.storeName ?? "provider"}` } })
+      }
+      return "OK" as const
+    }
+    if (diff > 0) {
+      const debited = await tx.user.updateMany({ where: { id: user.id, walletBalance: { gte: diff } }, data: { walletBalance: { decrement: diff } } })
+      if (!debited.count) throw new InsufficientFunds()
+      await tx.walletTransaction.create({ data: { userId: user.id, amount: diff, type: "DEBIT", description: `Agreed price — ${booking.provider.storeName ?? "provider"}` } })
+    } else if (diff < 0) {
+      await tx.user.update({ where: { id: user.id }, data: { walletBalance: { increment: -diff } } })
+      await tx.walletTransaction.create({ data: { userId: user.id, amount: -diff, type: "CREDIT", description: `Agreed price — ${booking.provider.storeName ?? "provider"}` } })
+    }
+    return "OK" as const
+  }).catch((err) => {
+    if (err instanceof InsufficientFunds) return "FUNDS" as const
+    throw err
+  })
+
+  if (outcome === "FUNDS") return { ok: false as const, message: `You need GH₵${diff.toLocaleString()} more in your wallet to accept this price. Top up and try again.` }
+  if (outcome === "STALE") return { ok: false as const, message: "This price is no longer on the table." }
+
+  try {
+    await notify(prisma, {
+      userId: booking.provider.userId,
+      type: "BOOKING",
+      title: accept ? "Price accepted" : "Price declined",
+      message: accept ? `The customer accepted GH₵${counter.toLocaleString()}. The job is confirmed.` : `The customer declined GH₵${counter.toLocaleString()} and the request was cancelled.`,
+      href: "/provider",
+    })
+    await audit(prisma, { actorId: user.id, action: accept ? "BOOKING_COUNTER_ACCEPTED" : "BOOKING_COUNTER_DECLINED", entityType: "Booking", entityId: bookingId, metadata: { amount: counter } })
+  } catch (err) {
+    console.error("[respondToCounter] side-effect failed:", err)
+  }
+
   revalidatePath("/bookings")
   revalidatePath("/provider")
   revalidatePath("/admin/bookings")

@@ -9,7 +9,11 @@ import { audit, notify } from "@/lib/events"
 import { splitPayout } from "@/lib/payouts"
 
 const updateSchema = z.discriminatedUnion("action", [
-  z.object({ action: z.literal("ACCEPT"), bookingId: z.string().min(1), amount: z.coerce.number().positive().max(1_000_000) }),
+  // ACCEPT carries no price: it takes the deal the customer already agreed to
+  // and paid for. Charging more than that needs their consent, which is what
+  // COUNTER is for.
+  z.object({ action: z.literal("ACCEPT"), bookingId: z.string().min(1) }),
+  z.object({ action: z.literal("COUNTER"), bookingId: z.string().min(1), amount: z.coerce.number().positive().max(1_000_000) }),
   z.object({ action: z.literal("DECLINE"), bookingId: z.string().min(1) }),
   z.object({ action: z.literal("START"), bookingId: z.string().min(1) }),
   z.object({ action: z.literal("COMPLETE"), bookingId: z.string().min(1) }),
@@ -51,11 +55,13 @@ export async function updateProviderBooking(input: ProviderBookingAction) {
   if (!provider || provider.status !== "APPROVED" || !provider.storeSetupComplete) return { ok: false as const, message: "Your store is not ready to manage bookings." }
   const booking = await prisma.booking.findFirst({ where: { id: data.bookingId, providerId: provider.id }, select: { status: true, customerId: true, depositAmount: true, amount: true } })
   if (!booking) return { ok: false as const, message: "Booking not found." }
-  const expected = data.action === "ACCEPT" || data.action === "DECLINE" ? "PENDING" : data.action === "START" ? "ACCEPTED" : "IN_PROGRESS"
+  const expected = data.action === "ACCEPT" || data.action === "COUNTER" || data.action === "DECLINE" ? "PENDING" : data.action === "START" ? "ACCEPTED" : "IN_PROGRESS"
   if (booking.status !== expected) return { ok: false as const, message: STALE }
-  const nextStatus = data.action === "ACCEPT" ? "ACCEPTED" : data.action === "DECLINE" ? "CANCELLED" : data.action === "START" ? "IN_PROGRESS" : "COMPLETED"
+  const nextStatus = data.action === "ACCEPT" ? "ACCEPTED" : data.action === "COUNTER" ? "PENDING" : data.action === "DECLINE" ? "CANCELLED" : data.action === "START" ? "IN_PROGRESS" : "COMPLETED"
   const copy = data.action === "ACCEPT"
-    ? { title: "Booking confirmed", message: `${provider.storeName ?? "Your provider"} accepted your request with an estimate of GH₵${data.amount.toLocaleString()}.` }
+    ? { title: "Booking confirmed", message: `${provider.storeName ?? "Your provider"} accepted your request at GH₵${(booking.depositAmount ?? 0).toLocaleString()}.` }
+    : data.action === "COUNTER"
+    ? { title: "New price proposed", message: `${provider.storeName ?? "Your provider"} proposed GH₵${data.amount.toLocaleString()} for this job. Accept or decline it from your bookings.` }
     : data.action === "DECLINE"
       ? { title: "Booking unavailable", message: `${provider.storeName ?? "The provider"} could not accept this request.` }
       : data.action === "START"
@@ -65,26 +71,17 @@ export async function updateProviderBooking(input: ProviderBookingAction) {
   let settledPayout = 0
 
   if (data.action === "ACCEPT") {
-    // True up the wallet hold to the provider's actual quote: charge more if
-    // it's higher than what was held at request time, refund if it's lower.
-    const held = booking.depositAmount ?? 0
-    const diff = data.amount - held
-    const outcome = await settle(() => prisma.$transaction(async (tx) => {
-      if (!await claim(tx, data.bookingId, "PENDING", { status: "ACCEPTED", amount: data.amount, depositAmount: data.amount })) throw new Unwind("STALE")
-      if (diff > 0) {
-        const debited = await tx.user.updateMany({ where: { id: booking.customerId, walletBalance: { gte: diff } }, data: { walletBalance: { decrement: diff } } })
-        if (!debited.count) throw new Unwind("FUNDS")
-        await tx.walletTransaction.create({ data: { userId: booking.customerId, amount: diff, type: "DEBIT", description: `Booking estimate updated — ${provider.storeName ?? "provider"}` } })
-      } else if (diff < 0) {
-        await tx.user.update({ where: { id: booking.customerId }, data: { walletBalance: { increment: -diff } } })
-        await tx.walletTransaction.create({ data: { userId: booking.customerId, amount: -diff, type: "CREDIT", description: `Booking estimate updated — ${provider.storeName ?? "provider"}` } })
-      }
-    }))
-    if (outcome === "FUNDS") return { ok: false as const, message: "The customer's wallet balance can't cover this estimate. Ask them to top up, or quote a lower amount." }
-    if (outcome === "STALE") return { ok: false as const, message: STALE }
+    // Accepting takes the price already held from the customer, so no money
+    // moves and no balance check is needed. If nothing was held there is no
+    // agreed price yet and the provider has to name one with a counter.
+    if (booking.depositAmount == null) return { ok: false as const, message: "There's no agreed price on this request yet. Send the customer a price instead." }
+    if (!await claim(prisma, data.bookingId, "PENDING", { status: "ACCEPTED", amount: booking.depositAmount, counterAmount: null, counterAt: null })) return { ok: false as const, message: STALE }
+  } else if (data.action === "COUNTER") {
+    // A proposal only — the customer's money is untouched until they accept it.
+    if (!await claim(prisma, data.bookingId, "PENDING", { counterAmount: data.amount, counterAt: new Date() })) return { ok: false as const, message: STALE }
   } else if (data.action === "DECLINE") {
     const outcome = await settle(() => prisma.$transaction(async (tx) => {
-      if (!await claim(tx, data.bookingId, "PENDING", { status: "CANCELLED", depositAmount: null })) throw new Unwind("STALE")
+      if (!await claim(tx, data.bookingId, "PENDING", { status: "CANCELLED", depositAmount: null, counterAmount: null, counterAt: null })) throw new Unwind("STALE")
       if (booking.depositAmount) {
         await tx.user.update({ where: { id: booking.customerId }, data: { walletBalance: { increment: booking.depositAmount } } })
         await tx.walletTransaction.create({ data: { userId: booking.customerId, amount: booking.depositAmount, type: "CREDIT", description: `Booking declined — refund from ${provider.storeName ?? "provider"}` } })
@@ -120,7 +117,7 @@ export async function updateProviderBooking(input: ProviderBookingAction) {
   try {
     await notify(prisma, { userId: booking.customerId, type: "BOOKING", ...copy, href: "/bookings" })
     if (settledPayout > 0) await notify(prisma, { userId: user.id, type: "PAYMENT", title: "Payout released", message: `GH₵${settledPayout.toLocaleString()} was added to your wallet for a completed job.`, href: "/provider/payments" })
-    await audit(prisma, { actorId: user.id, action: `BOOKING_${nextStatus}`, entityType: "Booking", entityId: data.bookingId })
+    await audit(prisma, { actorId: user.id, action: data.action === "COUNTER" ? "BOOKING_COUNTERED" : `BOOKING_${nextStatus}`, entityType: "Booking", entityId: data.bookingId, ...(data.action === "COUNTER" ? { metadata: { amount: data.amount } } : {}) })
   } catch (err) {
     console.error("[updateProviderBooking] side-effect failed:", err)
   }

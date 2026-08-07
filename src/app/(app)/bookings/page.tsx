@@ -12,7 +12,7 @@ export default async function BookingsPage() {
   const bookings: BookingItem[] = rows.map((booking) => ({
     id: booking.id, category: booking.category, status: booking.status,
     scheduledAt: booking.scheduledAt.toISOString(), address: booking.address,
-    amount: booking.amount, depositAmount: booking.depositAmount, providerName: booking.provider.storeName ?? booking.provider.user.name,
+    amount: booking.amount, depositAmount: booking.depositAmount, counterAmount: booking.counterAmount, providerName: booking.provider.storeName ?? booking.provider.user.name,
     reviewed: Boolean(booking.review), reviewRating: booking.review?.rating ?? null,
   }))
   return <BookingsClient bookings={bookings} />

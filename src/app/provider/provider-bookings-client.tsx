@@ -2,8 +2,8 @@
 
 import { useMemo, useState, useTransition } from "react"
 import {
-  CalendarDays, Check, CheckCircle2, ChevronRight, Loader2,
-  MapPin, Play, Search, Sparkles, UserRound, X,
+  CalendarDays, Check, CheckCircle2, ChevronRight, Clock3, Loader2,
+  MapPin, Play, Search, Send, Sparkles, Tag, UserRound, X,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { CATEGORIES, type CategorySlug } from "@/lib/categories"
@@ -18,6 +18,9 @@ export type ProviderBookingItem = {
   notes: string | null
   amount: number | null
   offeredAmount: number | null
+  /** The price the customer has agreed to and already paid into the hold. */
+  amountHeld: number | null
+  counterAmount: number | null
   customerName: string
   customerPhone: string | null
 }
@@ -84,20 +87,23 @@ function FilterButton({ active, onClick, children }: { active: boolean; onClick:
 
 function BookingCard({ booking }: { booking: ProviderBookingItem }) {
   const [expanded, setExpanded] = useState(booking.status === "PENDING")
-  const [amount, setAmount] = useState(booking.amount?.toString() ?? booking.offeredAmount?.toString() ?? "")
+  const [countering, setCountering] = useState(false)
+  const [amount, setAmount] = useState(booking.counterAmount?.toString() ?? booking.offeredAmount?.toString() ?? "")
   const [error, setError] = useState("")
   const [pending, startTransition] = useTransition()
   const meta = statusMeta[booking.status]
+  const awaitingCustomer = booking.status === "PENDING" && booking.counterAmount != null
 
   function run(action: ProviderBookingAction["action"]) {
     setError("")
-    const input = action === "ACCEPT"
+    if (action === "COUNTER" && (!amount || Number(amount) <= 0)) return setError("Enter the price you want to propose.")
+    const input = action === "COUNTER"
       ? { action, bookingId: booking.id, amount: Number(amount) } as const
       : { action, bookingId: booking.id } as ProviderBookingAction
-    if (action === "ACCEPT" && (!amount || Number(amount) <= 0)) return setError("Enter the agreed job estimate.")
     startTransition(async () => {
       const result = await updateProviderBooking(input)
-      if (!result.ok) setError(result.message)
+      if (!result.ok) return setError(result.message)
+      if (action === "COUNTER") setCountering(false)
     })
   }
 
@@ -108,7 +114,7 @@ function BookingCard({ booking }: { booking: ProviderBookingItem }) {
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-2">
             <p className="font-semibold">{booking.customerName}</p>
-            <span className={`rounded-full px-2 py-0.5 text-[11px] font-bold ${meta.tone}`}>{meta.label}</span>
+            <span className={`rounded-full px-2 py-0.5 text-[11px] font-bold ${awaitingCustomer ? "bg-primary/10 text-primary" : meta.tone}`}>{awaitingCustomer ? "Price sent" : meta.label}</span>
           </div>
           <p className="mt-0.5 text-sm text-muted-foreground">{labels[booking.category as CategorySlug] ?? booking.category}</p>
           <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground">
@@ -127,21 +133,37 @@ function BookingCard({ booking }: { booking: ProviderBookingItem }) {
             <div><p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Customer</p><p className="mt-1 flex items-center gap-1.5"><UserRound className="h-4 w-4 text-muted-foreground" />{booking.customerPhone || "Phone not provided"}</p></div>
           </div>
           {booking.offeredAmount != null && (
-            <div className="mt-3 flex items-center gap-2 rounded-xl border border-primary/20 bg-primary/5 px-3 py-2 text-sm">
+            <div className="mt-3 flex flex-wrap items-center gap-2 rounded-xl border border-primary/20 bg-primary/5 px-3 py-2 text-sm">
               <span className="rounded-full bg-primary/10 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-primary">Flex</span>
               <span className="text-muted-foreground">Customer proposed</span>
               <span className="font-bold text-primary">GH₵{booking.offeredAmount.toLocaleString()}</span>
-              <span className="text-muted-foreground">— accept it or enter your counter estimate below.</span>
+              <span className="text-muted-foreground">— accept it, or propose your own price.</span>
+            </div>
+          )}
+          {awaitingCustomer && (
+            <div className="mt-3 flex flex-wrap items-center gap-2 rounded-xl border border-amber-400/30 bg-amber-400/10 px-3 py-2 text-sm">
+              <Clock3 className="h-4 w-4 text-amber-700 dark:text-amber-300" />
+              <span className="text-muted-foreground">You proposed</span>
+              <span className="font-bold">GH₵{booking.counterAmount!.toLocaleString()}</span>
+              <span className="text-muted-foreground">— waiting for the customer to accept or decline.</span>
             </div>
           )}
           {error && <p className="mt-3 rounded-xl bg-destructive/10 px-3 py-2 text-sm text-destructive">{error}</p>}
           <div className="mt-4 flex flex-col gap-2 border-t border-border pt-4 sm:flex-row sm:items-center sm:justify-end">
             {booking.status === "PENDING" && (
-              <>
-                <label className="flex h-10 items-center rounded-xl border border-border bg-card px-3 text-sm focus-within:border-primary">GH₵<input type="number" min="1" value={amount} onChange={(e) => setAmount(e.target.value)} placeholder="Estimate" className="ml-2 w-full bg-transparent outline-none sm:w-24" /></label>
-                <Button variant="ghost" className="h-10 rounded-xl text-destructive" disabled={pending} onClick={() => run("DECLINE")}><X className="mr-1 h-4 w-4" />Decline</Button>
-                <Button className="h-10 rounded-xl px-4" disabled={pending} onClick={() => run("ACCEPT")}>{pending ? <Loader2 className="animate-spin" /> : <><Check className="mr-1 h-4 w-4" />Accept job</>}</Button>
-              </>
+              countering ? (
+                <>
+                  <label className="flex h-10 items-center rounded-xl border border-border bg-card px-3 text-sm focus-within:border-primary">GH₵<input type="number" min="1" value={amount} onChange={(e) => setAmount(e.target.value)} placeholder="Your price" autoFocus className="ml-2 w-full bg-transparent outline-none sm:w-24" /></label>
+                  <Button variant="ghost" className="h-10 rounded-xl" disabled={pending} onClick={() => { setCountering(false); setError("") }}>Cancel</Button>
+                  <Button className="h-10 rounded-xl px-4" disabled={pending} onClick={() => run("COUNTER")}>{pending ? <Loader2 className="animate-spin" /> : <><Send className="mr-1 h-4 w-4" />Send price</>}</Button>
+                </>
+              ) : (
+                <>
+                  <Button variant="ghost" className="h-10 rounded-xl text-destructive" disabled={pending} onClick={() => run("DECLINE")}><X className="mr-1 h-4 w-4" />Decline</Button>
+                  <Button variant="outline" className="h-10 rounded-xl" disabled={pending} onClick={() => setCountering(true)}><Tag className="mr-1 h-4 w-4" />{awaitingCustomer ? "Change price" : "Propose a price"}</Button>
+                  {booking.amountHeld != null && !awaitingCustomer && <Button className="h-10 rounded-xl px-4" disabled={pending} onClick={() => run("ACCEPT")}>{pending ? <Loader2 className="animate-spin" /> : <><Check className="mr-1 h-4 w-4" />Accept GH₵{booking.amountHeld.toLocaleString()}</>}</Button>}
+                </>
+              )
             )}
             {booking.status === "ACCEPTED" && <Button className="h-10 rounded-xl px-4" disabled={pending} onClick={() => run("START")}>{pending ? <Loader2 className="animate-spin" /> : <><Play className="mr-1 h-4 w-4" />Start job</>}</Button>}
             {booking.status === "IN_PROGRESS" && <Button className="h-10 rounded-xl px-4" disabled={pending} onClick={() => run("COMPLETE")}>{pending ? <Loader2 className="animate-spin" /> : <><CheckCircle2 className="mr-1 h-4 w-4" />Mark complete</>}</Button>}
