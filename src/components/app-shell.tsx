@@ -68,12 +68,6 @@ export function AppShell({ user, children }: { user: ShellUser; children: React.
                   <span className="mt-2 inline-flex rounded-full bg-accent px-2 py-0.5 text-[11px] font-semibold text-primary">{roleLabels[user.role] ?? "Customer"}</span>
                 </div>
                 <DropdownMenuSeparator />
-                {NAV.map(({ label, href, icon: Icon, hint }) => (
-                  <DropdownMenuItem key={href} render={<Link href={href} title={hint} />} className="gap-2 lg:hidden">
-                    <Icon className="h-4 w-4" />
-                    {label}
-                  </DropdownMenuItem>
-                ))}
                 <DropdownMenuItem render={<Link href="/wallet" title="Deposit and use your Homify wallet" />} className="gap-2">
                   <Wallet className="h-4 w-4" />
                   Wallet
@@ -93,7 +87,33 @@ export function AppShell({ user, children }: { user: ShellUser; children: React.
         </div>
       </header>
 
-      <main className="flex-1">{children}</main>
+      {/* Bottom padding clears the mobile tab bar, which is fixed and would
+          otherwise cover the last of the page. Includes the iOS home-indicator
+          inset so the bar itself isn't sitting under the system gesture area. */}
+      <main className="flex-1 pb-[calc(4.25rem+env(safe-area-inset-bottom))] lg:pb-0">{children}</main>
+
+      {/* Primary navigation on phones and tablets. The header nav above is the
+          same set, shown from lg up — on smaller screens it would not fit. */}
+      <nav aria-label="Primary" className="fixed inset-x-0 bottom-0 z-50 border-t border-border bg-background/95 pb-[env(safe-area-inset-bottom)] backdrop-blur-md lg:hidden">
+        <ul className="mx-auto flex max-w-lg items-stretch">
+          {NAV.map(({ label, href, icon: Icon, hint }) => {
+            const active = isActive(href)
+            return (
+              <li key={href} className="flex-1">
+                <Link
+                  href={href}
+                  title={hint}
+                  aria-current={active ? "page" : undefined}
+                  className={`flex min-h-[3.25rem] flex-col items-center justify-center gap-0.5 px-1 py-2 text-[11px] font-semibold transition-colors ${active ? "text-primary" : "text-muted-foreground"}`}
+                >
+                  <Icon className={`h-5 w-5 ${active ? "" : "opacity-80"}`} />
+                  <span className="w-full truncate text-center leading-tight">{label}</span>
+                </Link>
+              </li>
+            )
+          })}
+        </ul>
+      </nav>
 
       {/* Floating help assistant, available on every customer page. */}
       <ChatBot />

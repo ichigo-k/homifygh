@@ -60,19 +60,24 @@ export function ChatBot() {
     setInput("")
   }
 
+  // Both fixed elements clear the mobile tab bar in AppShell, dropping back to
+  // their old offsets at lg where that bar is hidden. The panel's height is
+  // capped against the viewport as well as fixed: at 30rem plus its offset it
+  // ran off the top of a short phone. dvh tracks the browser chrome collapsing
+  // on scroll, which vh does not.
   return (
     <>
       <button
         onClick={() => setOpen((v) => !v)}
         title="Ask the Homify assistant for help"
         aria-label="Open help assistant"
-        className="fixed bottom-5 right-5 z-[80] flex h-14 w-14 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-[var(--shadow-lg)] transition-transform hover:scale-105"
+        className="fixed bottom-[calc(5.25rem+env(safe-area-inset-bottom))] right-5 z-[80] flex h-14 w-14 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-[var(--shadow-lg)] transition-transform hover:scale-105 lg:bottom-5"
       >
         {open ? <X className="h-6 w-6" /> : <MessageCircle className="h-6 w-6" />}
       </button>
 
       {open && (
-        <div className="fixed bottom-24 right-5 z-[80] flex h-[30rem] w-[calc(100vw-2.5rem)] max-w-sm flex-col overflow-hidden rounded-3xl border border-border bg-card shadow-[var(--shadow-xl)]">
+        <div className="fixed bottom-[calc(9.5rem+env(safe-area-inset-bottom))] right-5 z-[80] flex h-[30rem] max-h-[calc(100dvh-12rem)] w-[calc(100vw-2.5rem)] max-w-sm flex-col overflow-hidden rounded-3xl border border-border bg-card shadow-[var(--shadow-xl)] lg:bottom-24 lg:max-h-[calc(100dvh-8rem)]">
           <div className="flex items-center gap-3 border-b border-border bg-primary/5 p-4">
             <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-primary text-primary-foreground"><Bot className="h-5 w-5" /></span>
             <div>

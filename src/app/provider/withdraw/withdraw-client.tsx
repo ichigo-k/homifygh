@@ -175,12 +175,12 @@ function HistoryRow({ item }: { item: WithdrawalItem }) {
       <div className="flex items-start justify-between gap-4">
         <div className="min-w-0">
           <p className="font-bold">{cedis(item.amount)}</p>
-          <p className="mt-1 text-xs text-muted-foreground">{methodLabel[item.method]} · {item.accountNumber}</p>
+          <p className="mt-1 break-words text-xs text-muted-foreground">{methodLabel[item.method]} · {item.accountNumber}</p>
           <p className="mt-1 text-xs text-muted-foreground">{new Date(item.createdAt).toLocaleDateString("en-GH", { day: "numeric", month: "short", year: "numeric" })}</p>
         </div>
         <span className={`inline-flex shrink-0 items-center gap-1 rounded-full px-2.5 py-1 text-[11px] font-bold ${meta.tone}`}><Icon className="h-3 w-3" />{meta.label}</span>
       </div>
-      {item.reference && <p className="mt-2 text-xs text-muted-foreground">Reference: {item.reference}</p>}
+      {item.reference && <p className="mt-2 break-words text-xs text-muted-foreground">Reference: {item.reference}</p>}
       {item.note && <p className="mt-2 rounded-xl bg-muted/40 px-3 py-2 text-xs">{item.note}</p>}
       {item.status === "PENDING" && (
         <div className="mt-3 flex justify-end">

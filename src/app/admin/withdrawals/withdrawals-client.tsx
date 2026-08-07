@@ -102,7 +102,9 @@ function Row({ item }: { item: AdminWithdrawal }) {
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div className="min-w-0">
           <p className="font-bold">{item.storeName}</p>
-          <p className="mt-0.5 text-xs text-muted-foreground">{item.email}{item.phone ? ` · ${item.phone}` : ""}</p>
+          {/* Emails and account numbers have no spaces to wrap on, so they need
+              an explicit break or they push the row wider than a phone. */}
+          <p className="mt-0.5 break-words text-xs text-muted-foreground">{item.email}{item.phone ? ` · ${item.phone}` : ""}</p>
           <p className="mt-2 flex items-center gap-1.5 text-sm font-semibold">
             {item.method === "MOBILE_MONEY" ? <Smartphone className="h-4 w-4 text-muted-foreground" /> : <Banknote className="h-4 w-4 text-muted-foreground" />}
             {methodLabel[item.method]} · {item.accountNumber}
@@ -116,7 +118,7 @@ function Row({ item }: { item: AdminWithdrawal }) {
         </div>
       </div>
 
-      {item.reference && <p className="mt-3 text-xs text-muted-foreground">Reference: {item.reference}</p>}
+      {item.reference && <p className="mt-3 break-words text-xs text-muted-foreground">Reference: {item.reference}</p>}
       {item.note && <p className="mt-3 rounded-xl bg-muted/40 px-3 py-2 text-xs">{item.note}</p>}
 
       {item.status === "PENDING" && (
