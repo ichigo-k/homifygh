@@ -1,6 +1,6 @@
 import assert from "node:assert/strict"
 import test from "node:test"
-import { PLATFORM_COMMISSION_RATE, splitPayout } from "../src/lib/payouts"
+import { MIN_WITHDRAWAL, PLATFORM_COMMISSION_RATE, splitPayout, withdrawalError } from "../src/lib/payouts"
 
 test("commission and payout always add back up to the gross amount", () => {
   // Amounts that expose float drift if the two parts are rounded independently.
@@ -25,4 +25,27 @@ test("both parts round to whole pesewas", () => {
 
 test("a zero-value booking settles to nothing rather than a negative payout", () => {
   assert.deepEqual(splitPayout(0), { platformFee: 0, providerPayout: 0 })
+})
+
+test("a withdrawal within the balance is allowed", () => {
+  assert.equal(withdrawalError(50, 120), null)
+  assert.equal(withdrawalError(120, 120), null, "withdrawing the whole balance should be fine")
+})
+
+test("a withdrawal cannot exceed the balance", () => {
+  assert.match(withdrawalError(120.01, 120) ?? "", /balance/)
+})
+
+test("a withdrawal below the minimum is refused", () => {
+  assert.match(withdrawalError(MIN_WITHDRAWAL - 0.01, 500) ?? "", /smallest/)
+})
+
+test("junk amounts are refused rather than debited", () => {
+  for (const amount of [0, -50, Number.NaN, Number.POSITIVE_INFINITY]) {
+    assert.notEqual(withdrawalError(amount, 500), null, `${amount} should not be withdrawable`)
+  }
+})
+
+test("amounts finer than a pesewa are refused", () => {
+  assert.match(withdrawalError(50.005, 500) ?? "", /pesewa/)
 })

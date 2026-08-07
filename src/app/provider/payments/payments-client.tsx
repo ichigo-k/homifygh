@@ -38,6 +38,7 @@ export function PaymentsClient({ balance, bookings }: { balance: number; booking
           <div className="rounded-2xl border border-border bg-card p-5">
             <div className="flex justify-between"><p className="text-xs font-semibold uppercase text-muted-foreground">Wallet balance</p><WalletCards className="h-4 w-4 text-primary" /></div>
             <p className="mt-3 text-2xl font-extrabold">{cedis(balance)}</p>
+            <Link href="/provider/withdraw" className="mt-2 inline-block text-xs font-bold text-primary hover:underline">Withdraw earnings →</Link>
           </div>
           <div className="rounded-2xl border border-border bg-card p-5">
             <div className="flex justify-between"><p className="text-xs font-semibold uppercase text-muted-foreground">Paid out</p><BadgeCheck className="h-4 w-4 text-primary" /></div>

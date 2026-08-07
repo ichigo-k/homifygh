@@ -38,6 +38,30 @@ model User {
   auditLogs AuditLog[] @relation("AuditActor")
   walletTransactions WalletTransaction[]
   complaints Complaint[]
+  withdrawals Withdrawal[]
+  reviewedWithdrawals Withdrawal[] @relation("WithdrawalReviewer")
+}
+
+model Withdrawal {
+  id String @id @default(cuid())
+  userId String
+  amount Float
+  status WithdrawalStatus @default(PENDING)
+  // Destination is snapshotted at request time so editing the payout profile
+  // later can never rewrite where money was already sent.
+  method PayoutMethod
+  accountName String
+  accountNumber String
+  reference String?
+  note String?
+  reviewedById String?
+  processedAt DateTime?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  reviewedBy User? @relation("WithdrawalReviewer", fields: [reviewedById], references: [id])
+  @@index([status, createdAt])
+  @@index([userId, createdAt])
 }
 
 model WalletTransaction {
@@ -132,6 +156,9 @@ model Provider {
   workEnd String @default("18:00")
   unavailableDates String[] @default([])
   acceptsWhatsApp Boolean @default(false)
+  payoutMethod PayoutMethod?
+  payoutAccountName String?
+  payoutAccountNumber String?
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -313,6 +340,15 @@ enum DisputeStatus {
 enum WalletTxnType {
   CREDIT
   DEBIT
+}
+enum WithdrawalStatus {
+  PENDING
+  PAID
+  REJECTED
+}
+enum PayoutMethod {
+  MOBILE_MONEY
+  BANK_TRANSFER
 }
 enum ComplaintStatus {
   OPEN

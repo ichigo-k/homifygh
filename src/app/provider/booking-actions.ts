@@ -98,7 +98,11 @@ export async function updateProviderBooking(input: ProviderBookingAction) {
     const gross = booking.depositAmount ?? booking.amount ?? 0
     const { platformFee, providerPayout } = splitPayout(gross)
     const outcome = await settle(() => prisma.$transaction(async (tx) => {
-      if (!await claim(tx, data.bookingId, "IN_PROGRESS", { status: "COMPLETED", platformFee, providerPayout, payoutAt: new Date(), ...(gross > 0 ? { paymentStatus: "PAID" as const, paidAt: new Date() } : {}) })) throw new Unwind("STALE")
+      // depositAmount is cleared for the same reason decline and cancel clear
+      // it: it means "funds still held against this booking", and they aren't
+      // any more — they went to the provider. Leaving it set makes
+      // deleteBookingAdmin refund the customer money already paid out.
+      if (!await claim(tx, data.bookingId, "IN_PROGRESS", { status: "COMPLETED", depositAmount: null, platformFee, providerPayout, payoutAt: new Date(), ...(gross > 0 ? { paymentStatus: "PAID" as const, paidAt: new Date() } : {}) })) throw new Unwind("STALE")
       if (providerPayout > 0) {
         await tx.user.update({ where: { id: user.id }, data: { walletBalance: { increment: providerPayout } } })
         await tx.walletTransaction.create({ data: { userId: user.id, amount: providerPayout, type: "CREDIT", description: `Job completed — payout${platformFee > 0 ? ` (GH₵${gross.toLocaleString()} less GH₵${platformFee.toLocaleString()} commission)` : ""}` } })
