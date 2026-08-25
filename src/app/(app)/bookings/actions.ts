@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache"
 import { z } from "zod"
 import { prisma } from "@/lib/prisma"
 import { requireRole } from "@/lib/session"
+import { notify } from "@/lib/events"
 
 export async function rebookBooking(bookingId: string) {
   const user = await requireRole("CUSTOMER")
@@ -86,6 +87,99 @@ export async function submitReview(input: z.infer<typeof reviewSchema>) {
   })
   revalidatePath("/bookings")
   revalidatePath("/search")
+  revalidatePath("/provider")
+  return { ok: true as const }
+}
+
+export async function customerAcceptPrice(input: { bookingId: string }) {
+  const user = await requireRole("CUSTOMER")
+  const booking = await prisma.booking.findFirst({
+    where: { id: input.bookingId, customerId: user.id },
+    select: { id: true, offeredAmount: true, provider: { select: { userId: true } } },
+  })
+  if (!booking) return { ok: false as const, message: "Booking not found." }
+
+  const agreed = booking.offeredAmount ?? 0
+
+  await prisma.booking.update({
+    where: { id: input.bookingId },
+    data: {
+      priceStatus: "AGREED",
+      agreedAmount: booking.offeredAmount,
+      amount: booking.offeredAmount,
+    },
+  })
+
+  try {
+    await notify(prisma, {
+      userId: booking.provider.userId,
+      type: "BOOKING",
+      title: "Price Proposal Accepted",
+      message: `Customer accepted the price proposal of GH₵${agreed.toLocaleString()}.`,
+      href: "/provider",
+    })
+  } catch (err) {
+    console.error("[customerAcceptPrice] notification failed:", err)
+  }
+
+  revalidatePath("/bookings")
+  revalidatePath("/provider")
+  return { ok: true as const }
+}
+
+export async function customerCounterOffer(input: { bookingId: string; price: number }) {
+  const user = await requireRole("CUSTOMER")
+  const booking = await prisma.booking.findFirst({
+    where: { id: input.bookingId, customerId: user.id },
+    select: { id: true, provider: { select: { userId: true } } },
+  })
+  if (!booking) return { ok: false as const, message: "Booking not found." }
+
+  if (typeof input.price !== "number" || input.price <= 0) {
+    return { ok: false as const, message: "Invalid price specified." }
+  }
+
+  await prisma.booking.update({
+    where: { id: input.bookingId },
+    data: {
+      offeredAmount: input.price,
+      priceStatus: "PROPOSED_BY_CUSTOMER",
+    },
+  })
+
+  try {
+    await notify(prisma, {
+      userId: booking.provider.userId,
+      type: "BOOKING",
+      title: "Counter Offer Received",
+      message: `Customer proposed a price of GH₵${input.price.toLocaleString()}.`,
+      href: "/provider",
+    })
+  } catch (err) {
+    console.error("[customerCounterOffer] notification failed:", err)
+  }
+
+  revalidatePath("/bookings")
+  revalidatePath("/provider")
+  return { ok: true as const }
+}
+
+export async function customerRejectPrice(input: { bookingId: string }) {
+  const user = await requireRole("CUSTOMER")
+  const booking = await prisma.booking.findFirst({
+    where: { id: input.bookingId, customerId: user.id },
+    select: { id: true },
+  })
+  if (!booking) return { ok: false as const, message: "Booking not found." }
+
+  await prisma.booking.update({
+    where: { id: input.bookingId },
+    data: {
+      priceStatus: "REJECTED",
+    },
+  })
+
+  revalidatePath("/bookings")
   revalidatePath("/provider")
   return { ok: true as const }
 }

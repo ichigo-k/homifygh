@@ -39,9 +39,9 @@ const categories = [
 ]
 
 const stats = [
-  { value: "2K+", label: "Verified pros" },
-  { value: "15K+", label: "Jobs done" },
-  { value: "99%", label: "Satisfaction" },
+  { value: "2K+", label: "Verified pros*" },
+  { value: "15K+", label: "Jobs done*" },
+  { value: "99%", label: "Satisfaction*" },
 ]
 
 const whyUs = [
@@ -211,6 +211,9 @@ export default function HomePage() {
                 </div>
               ))}
             </div>
+            <p className="intro mt-3 text-center text-[11px] text-muted-foreground/60 lg:text-left" style={{ "--d": "0.56s" } as React.CSSProperties}>
+              * Estimated figures for demonstration purposes.
+            </p>
           </div>
 
           {/* Right: decorative card cluster */}

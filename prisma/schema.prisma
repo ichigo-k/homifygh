@@ -54,14 +54,18 @@ model WalletTransaction {
 model Complaint {
   id String @id @default(cuid())
   userId String
+  providerId String?
+  bookingId String?
   subject String
   category String
   message String
   status ComplaintStatus @default(OPEN)
   response String?
+  resolutionNotes String?
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  messages ComplaintMessage[]
   @@index([userId, createdAt])
 }
 
@@ -142,6 +146,7 @@ model Provider {
   portfolio PortfolioImage[]
   savedBy SavedProvider[]
   disputes Dispute[]
+  payoutRequests PayoutRequest[]
 }
 
 model ServiceOffering {
@@ -190,6 +195,8 @@ model Booking {
   notes String?
   amount Float?
   offeredAmount Float?
+  agreedAmount Float?
+  priceStatus PriceStatus @default(AGREED)
   depositAmount Float?
   paymentStatus PaymentStatus @default(UNPAID)
   paymentMethod String?
@@ -247,6 +254,32 @@ model Dispute {
   customer User @relation("DisputeCustomer", fields: [customerId], references: [id])
   provider Provider @relation(fields: [providerId], references: [id])
   @@index([status, createdAt])
+}
+
+model ComplaintMessage {
+  id String @id @default(cuid())
+  complaintId String
+  senderId String
+  senderName String
+  senderRole Role
+  message String
+  createdAt DateTime @default(now())
+  complaint Complaint @relation(fields: [complaintId], references: [id], onDelete: Cascade)
+  @@index([complaintId, createdAt])
+}
+
+model PayoutRequest {
+  id String @id @default(cuid())
+  providerId String
+  amount Float
+  accountNumber String
+  accountNetwork String
+  status PayoutStatus @default(PENDING)
+  adminNotes String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  provider Provider @relation(fields: [providerId], references: [id], onDelete: Cascade)
+  @@index([providerId, createdAt])
 }
 
 model AuditLog {
@@ -315,3 +348,16 @@ enum ComplaintStatus {
   IN_REVIEW
   RESOLVED
 }
+enum PriceStatus {
+  PENDING_AGREEMENT
+  PROPOSED_BY_PROVIDER
+  PROPOSED_BY_CUSTOMER
+  AGREED
+  REJECTED
+}
+enum PayoutStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+

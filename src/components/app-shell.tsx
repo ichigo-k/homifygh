@@ -68,12 +68,6 @@ export function AppShell({ user, children }: { user: ShellUser; children: React.
                   <span className="mt-2 inline-flex rounded-full bg-accent px-2 py-0.5 text-[11px] font-semibold text-primary">{roleLabels[user.role] ?? "Customer"}</span>
                 </div>
                 <DropdownMenuSeparator />
-                {NAV.map(({ label, href, icon: Icon, hint }) => (
-                  <DropdownMenuItem key={href} render={<Link href={href} title={hint} />} className="gap-2 lg:hidden">
-                    <Icon className="h-4 w-4" />
-                    {label}
-                  </DropdownMenuItem>
-                ))}
                 <DropdownMenuItem render={<Link href="/wallet" title="Deposit and use your Homify wallet" />} className="gap-2">
                   <Wallet className="h-4 w-4" />
                   Wallet
@@ -93,7 +87,26 @@ export function AppShell({ user, children }: { user: ShellUser; children: React.
         </div>
       </header>
 
-      <main className="flex-1">{children}</main>
+      {/* Main content — add bottom padding on mobile so bottom nav doesn't obscure it */}
+      <main className="flex-1 pb-16 lg:pb-0">{children}</main>
+
+      {/* Bottom nav — mobile only */}
+      <nav className="fixed bottom-0 left-0 right-0 z-50 flex border-t border-border bg-background/95 backdrop-blur-md lg:hidden">
+        {NAV.map(({ label, href, icon: Icon }) => {
+          const active = isActive(href)
+          return (
+            <Link
+              key={href}
+              href={href}
+              className={`flex flex-1 flex-col items-center gap-1 py-2.5 text-[10px] font-semibold transition-colors ${active ? "text-primary" : "text-muted-foreground"
+                }`}
+            >
+              <Icon className={`h-5 w-5 ${active ? "text-primary" : ""}`} />
+              <span className="leading-none">{label === "My bookings" ? "Bookings" : label === "Find a pro" ? "Find pro" : label}</span>
+            </Link>
+          )
+        })}
+      </nav>
 
       {/* Floating help assistant, available on every customer page. */}
       <ChatBot />

@@ -7,7 +7,58 @@ import { isEmailTaken } from "./actions"
 import { signUp } from "@/lib/auth-client"
 import { Button } from "@/components/ui/button"
 import { Field } from "@/components/auth/field"
-import { User, Mail, Lock, Loader2, ArrowRight, AlertCircle } from "lucide-react"
+import { User, Mail, Lock, Loader2, ArrowRight, AlertCircle, Check, X } from "lucide-react"
+
+/** Returns an array of unmet requirements */
+function passwordIssues(pw: string): string[] {
+  const issues: string[] = []
+  if (pw.length < 8) issues.push("At least 8 characters")
+  if (!/[A-Za-z]/.test(pw)) issues.push("At least one letter")
+  if (!/[0-9]/.test(pw)) issues.push("At least one number")
+  if (!/[^A-Za-z0-9]/.test(pw)) issues.push("At least one special character")
+  return issues
+}
+
+function PasswordStrength({ password }: { password: string }) {
+  if (!password) return null
+  const issues = passwordIssues(password)
+  const rules = [
+    { label: "8+ characters", pass: password.length >= 8 },
+    { label: "Letter", pass: /[A-Za-z]/.test(password) },
+    { label: "Number", pass: /[0-9]/.test(password) },
+    { label: "Special character", pass: /[^A-Za-z0-9]/.test(password) },
+  ]
+  const score = rules.filter((r) => r.pass).length
+  const bar = ["bg-red-500", "bg-orange-400", "bg-amber-400", "bg-emerald-500"][score - 1] ?? "bg-muted"
+  const label = ["", "Weak", "Fair", "Good", "Strong"][score]
+  void issues
+
+  return (
+    <div className="mt-2 space-y-2">
+      <div className="flex items-center gap-2">
+        <div className="flex flex-1 gap-1">
+          {[1, 2, 3, 4].map((i) => (
+            <div
+              key={i}
+              className={`h-1.5 flex-1 rounded-full transition-colors ${i <= score ? bar : "bg-muted"}`}
+            />
+          ))}
+        </div>
+        <span className={`text-xs font-semibold ${score >= 3 ? "text-emerald-600" : "text-muted-foreground"}`}>
+          {label}
+        </span>
+      </div>
+      <div className="grid grid-cols-2 gap-1">
+        {rules.map(({ label: ruleLabel, pass }) => (
+          <span key={ruleLabel} className={`flex items-center gap-1.5 text-xs ${pass ? "text-emerald-600" : "text-muted-foreground"}`}>
+            {pass ? <Check className="h-3 w-3 shrink-0" /> : <X className="h-3 w-3 shrink-0 opacity-50" />}
+            {ruleLabel}
+          </span>
+        ))}
+      </div>
+    </div>
+  )
+}
 
 export default function SignUpPage() {
   const router = useRouter()
@@ -19,6 +70,13 @@ export default function SignUpPage() {
     e.preventDefault()
     setLoading(true)
     setError("")
+
+    const pwIssues = passwordIssues(form.password)
+    if (pwIssues.length > 0) {
+      setError(`Password does not meet requirements: ${pwIssues.join(", ")}.`)
+      setLoading(false)
+      return
+    }
 
     try {
       if (await isEmailTaken(form.email)) {
@@ -92,17 +150,19 @@ export default function SignUpPage() {
           required
         />
 
-        <Field
-          id="password"
-          label="Password"
-          type="password"
-          icon={Lock}
-          autoComplete="new-password"
-          minLength={8}
-          value={form.password}
-          onChange={(e) => setForm({ ...form, password: e.target.value })}
-          required
-        />
+        <div>
+          <Field
+            id="password"
+            label="Password"
+            type="password"
+            icon={Lock}
+            autoComplete="new-password"
+            value={form.password}
+            onChange={(e) => setForm({ ...form, password: e.target.value })}
+            required
+          />
+          <PasswordStrength password={form.password} />
+        </div>
 
         {error && (
           <div className="flex items-start gap-2 rounded-xl bg-destructive/10 px-3.5 py-3 text-sm text-destructive">

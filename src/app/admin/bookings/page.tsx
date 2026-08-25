@@ -1,6 +1,8 @@
 import { prisma } from "@/lib/prisma"
 import { AdminBookingsClient } from "./bookings-client"
 
+export const dynamic = "force-dynamic"
+
 export default async function AdminBookingsPage() {
   const bookings = await prisma.booking.findMany({ orderBy: { createdAt: "desc" }, take: 100, include: { customer: { select: { name: true, email: true } }, provider: { select: { storeName: true, user: { select: { name: true } } } }, dispute: { select: { status: true } } } })
   return <div className="mx-auto max-w-7xl p-6">

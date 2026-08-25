@@ -78,3 +78,120 @@ export async function updateProviderBooking(input: ProviderBookingAction) {
   revalidatePath("/more")
   return { ok: true as const }
 }
+
+export async function proposePrice(input: { bookingId: string; price: number }) {
+  const user = await requireRole("PROVIDER")
+  const provider = await prisma.provider.findUnique({
+    where: { userId: user.id },
+    select: { id: true, storeName: true, status: true, storeSetupComplete: true },
+  })
+  if (!provider || provider.status !== "APPROVED" || !provider.storeSetupComplete) {
+    return { ok: false as const, message: "Your store is not ready to manage bookings." }
+  }
+
+  const booking = await prisma.booking.findFirst({
+    where: { id: input.bookingId, providerId: provider.id },
+    select: { id: true, customerId: true },
+  })
+  if (!booking) return { ok: false as const, message: "Booking not found." }
+
+  if (typeof input.price !== "number" || input.price <= 0) {
+    return { ok: false as const, message: "Invalid price specified." }
+  }
+
+  await prisma.booking.update({
+    where: { id: input.bookingId },
+    data: {
+      offeredAmount: input.price,
+      priceStatus: "PROPOSED_BY_PROVIDER",
+    },
+  })
+
+  try {
+    await notify(prisma, {
+      userId: booking.customerId,
+      type: "BOOKING",
+      title: "Price Proposed",
+      message: `${provider.storeName ?? "Your provider"} proposed a price of GH₵${input.price.toLocaleString()}.`,
+      href: "/bookings",
+    })
+  } catch (err) {
+    console.error("[proposePrice] notification failed:", err)
+  }
+
+  revalidatePath("/provider")
+  revalidatePath("/bookings")
+  return { ok: true as const }
+}
+
+export async function acceptPriceProposal(input: { bookingId: string }) {
+  const user = await requireRole("PROVIDER")
+  const provider = await prisma.provider.findUnique({
+    where: { userId: user.id },
+    select: { id: true, storeName: true, status: true, storeSetupComplete: true },
+  })
+  if (!provider || provider.status !== "APPROVED" || !provider.storeSetupComplete) {
+    return { ok: false as const, message: "Your store is not ready to manage bookings." }
+  }
+
+  const booking = await prisma.booking.findFirst({
+    where: { id: input.bookingId, providerId: provider.id },
+    select: { id: true, customerId: true, offeredAmount: true },
+  })
+  if (!booking) return { ok: false as const, message: "Booking not found." }
+
+  const agreed = booking.offeredAmount ?? 0
+
+  await prisma.booking.update({
+    where: { id: input.bookingId },
+    data: {
+      priceStatus: "AGREED",
+      agreedAmount: booking.offeredAmount,
+      amount: booking.offeredAmount,
+    },
+  })
+
+  try {
+    await notify(prisma, {
+      userId: booking.customerId,
+      type: "BOOKING",
+      title: "Price Proposal Accepted",
+      message: `${provider.storeName ?? "Your provider"} accepted the price proposal of GH₵${agreed.toLocaleString()}.`,
+      href: "/bookings",
+    })
+  } catch (err) {
+    console.error("[acceptPriceProposal] notification failed:", err)
+  }
+
+  revalidatePath("/provider")
+  revalidatePath("/bookings")
+  return { ok: true as const }
+}
+
+export async function rejectPriceProposal(input: { bookingId: string }) {
+  const user = await requireRole("PROVIDER")
+  const provider = await prisma.provider.findUnique({
+    where: { userId: user.id },
+    select: { id: true, status: true, storeSetupComplete: true },
+  })
+  if (!provider || provider.status !== "APPROVED" || !provider.storeSetupComplete) {
+    return { ok: false as const, message: "Your store is not ready to manage bookings." }
+  }
+
+  const booking = await prisma.booking.findFirst({
+    where: { id: input.bookingId, providerId: provider.id },
+    select: { id: true },
+  })
+  if (!booking) return { ok: false as const, message: "Booking not found." }
+
+  await prisma.booking.update({
+    where: { id: input.bookingId },
+    data: {
+      priceStatus: "REJECTED",
+    },
+  })
+
+  revalidatePath("/provider")
+  revalidatePath("/bookings")
+  return { ok: true as const }
+}
