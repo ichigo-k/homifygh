@@ -20,6 +20,7 @@ export async function submitComplaint(input: z.infer<typeof complaintSchema>) {
     data: { userId: user.id, category: parsed.data.category, subject: parsed.data.subject, message: parsed.data.message },
   })
   revalidatePath("/complaints")
+  revalidatePath("/admin/complaints")
   return { ok: true as const }
 }
 
@@ -28,6 +29,6 @@ export async function deleteComplaint(complaintId: string) {
   const result = await prisma.complaint.deleteMany({ where: { id: complaintId, userId: user.id } })
   if (!result.count) return { ok: false as const, message: "Complaint not found." }
   revalidatePath("/complaints")
-  revalidatePath("/admin/disputes")
+  revalidatePath("/admin/complaints")
   return { ok: true as const }
 }

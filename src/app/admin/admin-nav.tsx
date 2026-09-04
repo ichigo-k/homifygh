@@ -1,15 +1,14 @@
 "use client"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
-import { AlertTriangle, CalendarDays, LayoutDashboard, LogOut, MessageSquareWarning, ShieldCheck, Users } from "lucide-react"
+import { CalendarDays, LayoutDashboard, LogOut, ShieldAlert, ShieldCheck, Users } from "lucide-react"
 import { signOut } from "@/lib/auth-client"
 
 const links = [
   { label: "Overview", href: "/admin", icon: LayoutDashboard },
   { label: "Provider review", href: "/admin/providers", icon: Users },
   { label: "Bookings", href: "/admin/bookings", icon: CalendarDays },
-  { label: "Complaints", href: "/admin/complaints", icon: MessageSquareWarning },
-  { label: "Disputes", href: "/admin/disputes", icon: AlertTriangle },
+  { label: "Trust & Safety", href: "/admin/complaints", icon: ShieldAlert },
 ]
 
 export function AdminNav({ user }: { user: { name: string; email: string; image?: string | null } }) {

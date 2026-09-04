@@ -34,6 +34,8 @@ export async function createBooking(input: z.infer<typeof bookingSchema>) {
       workingDays: true,
       workStart: true,
       workEnd: true,
+      breakStart: true,
+      breakEnd: true,
       unavailableDates: true,
       user: { select: { email: true, name: true } },
       services: { where: { active: true, startingPrice: { not: null } }, select: { startingPrice: true } },

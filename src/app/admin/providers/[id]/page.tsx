@@ -7,6 +7,8 @@ import { DocInspector } from "./doc-inspector"
 import { ArrowLeft, MapPin, Sparkles, User, FileText, Calendar, ShieldCheck } from "lucide-react"
 import { cn } from "@/lib/utils"
 
+export const dynamic = "force-dynamic"
+
 export default async function ProviderReviewPage({
   params,
 }: {
@@ -35,7 +37,7 @@ export default async function ProviderReviewPage({
   const statusLabel = provider.status.charAt(0) + provider.status.slice(1).toLowerCase()
 
   return (
-    <div className="p-6 max-w-7xl mx-auto space-y-6 fade-in">
+    <div className="p-4 sm:p-6 max-w-7xl mx-auto space-y-6 fade-in">
       {/* ─── BREADCRUMB ───────────────────────────────────────── */}
       <div>
         <Link

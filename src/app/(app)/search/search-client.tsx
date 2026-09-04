@@ -37,6 +37,26 @@ const CAT = Object.fromEntries(CATEGORIES.map((c) => [c.slug, c])) as Record<
   (typeof CATEGORIES)[number]
 >
 
+// A provider with no verified reviews shows a neutral "New" chip rather than a
+// misleading "0.0 (0)", which reads like a bad score.
+function RatingBadge({ rating, reviews }: { rating: number; reviews: number }) {
+  if (reviews === 0) {
+    return (
+      <span className="inline-flex items-center gap-1 rounded-full bg-accent px-2 py-0.5 text-[11px] font-semibold text-primary">
+        <Sparkles className="h-3 w-3" />
+        New
+      </span>
+    )
+  }
+  return (
+    <span className="flex items-center gap-1">
+      <Star className="h-3.5 w-3.5 fill-amber-400 text-amber-400" />
+      <span className="font-semibold text-foreground">{rating.toFixed(1)}</span>
+      <span>({reviews})</span>
+    </span>
+  )
+}
+
 type Sort = "rating" | "reviews"
 type MinRating = 0 | 4 | 4.5
 
@@ -367,11 +387,7 @@ function ProviderRow({ provider }: { provider: SearchProvider }) {
         </div>
         <p className="text-xs text-muted-foreground">{meta?.label ?? provider.category}</p>
         <div className="mt-1.5 flex items-center gap-3 text-xs text-muted-foreground">
-          <span className="flex items-center gap-1">
-            <Star className="h-3.5 w-3.5 fill-amber-400 text-amber-400" />
-            <span className="font-semibold text-foreground">{provider.rating.toFixed(1)}</span>
-            <span>({provider.reviews})</span>
-          </span>
+          <RatingBadge rating={provider.rating} reviews={provider.reviews} />
           {provider.location && (
             <span className="flex items-center gap-1 truncate">
               <MapPin className="h-3.5 w-3.5 shrink-0" />
@@ -452,11 +468,7 @@ function ProviderCard({ provider }: { provider: SearchProvider }) {
         </div>
 
         <div className="mt-1.5 flex items-center gap-3 text-xs text-muted-foreground">
-          <span className="flex items-center gap-1">
-            <Star className="h-3.5 w-3.5 fill-amber-400 text-amber-400" />
-            <span className="font-semibold text-foreground">{provider.rating.toFixed(1)}</span>
-            <span>({provider.reviews})</span>
-          </span>
+          <RatingBadge rating={provider.rating} reviews={provider.reviews} />
           {provider.location && (
             <span className="flex items-center gap-1 truncate">
               <MapPin className="h-3.5 w-3.5 shrink-0" />

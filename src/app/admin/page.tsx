@@ -2,6 +2,9 @@ import Link from "next/link"
 import { prisma } from "@/lib/prisma"
 import { Clock, CheckCircle2, XCircle, ArrowRight, ShieldCheck } from "lucide-react"
 
+// Admin dashboards read live moderation data — always render on demand.
+export const dynamic = "force-dynamic"
+
 export default async function AdminOverviewPage() {
   const [pending, approved, rejected] = await Promise.all([
     prisma.provider.count({ where: { status: "PENDING" } }),
@@ -52,7 +55,7 @@ export default async function AdminOverviewPage() {
   ]
 
   return (
-    <div className="p-6 max-w-7xl mx-auto space-y-8 fade-in">
+    <div className="p-4 sm:p-6 max-w-7xl mx-auto space-y-6 sm:space-y-8 fade-in">
       {/* ─── HEADER ───────────────────────────────────────────── */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 border-b border-border/40 pb-5">
         <div>

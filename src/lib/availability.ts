@@ -3,6 +3,8 @@ export type AvailabilityProfile = {
   workingDays: number[]
   workStart: string
   workEnd: string
+  breakStart?: string | null
+  breakEnd?: string | null
   unavailableDates: string[]
 }
 
@@ -21,6 +23,12 @@ export function availabilityError(profile: AvailabilityProfile, scheduledAt: Dat
   const selectedMinutes = scheduledAt.getHours() * 60 + scheduledAt.getMinutes()
   if (selectedMinutes < minutes(profile.workStart) || selectedMinutes >= minutes(profile.workEnd)) {
     return `Choose a time between ${profile.workStart} and ${profile.workEnd}.`
+  }
+  // Reject times that fall inside the provider's daily break, if one is set.
+  if (profile.breakStart && profile.breakEnd) {
+    if (selectedMinutes >= minutes(profile.breakStart) && selectedMinutes < minutes(profile.breakEnd)) {
+      return `This provider is on a break between ${profile.breakStart} and ${profile.breakEnd}. Choose another time.`
+    }
   }
   return null
 }

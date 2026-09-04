@@ -2,6 +2,9 @@ import Link from "next/link"
 import { prisma } from "@/lib/prisma"
 import { ProvidersClient } from "./providers-client"
 import { ShieldCheck, Clock, CheckCircle2, XCircle } from "lucide-react"
+
+export const dynamic = "force-dynamic"
+
 type ProviderStatus = "PENDING" | "APPROVED" | "REJECTED"
 
 export default async function ProviderQueuePage({
@@ -39,7 +42,7 @@ export default async function ProviderQueuePage({
   ]
 
   return (
-    <div className="p-6 max-w-7xl mx-auto space-y-6 fade-in">
+    <div className="p-4 sm:p-6 max-w-7xl mx-auto space-y-6 fade-in">
       {/* ─── HEADER ───────────────────────────────────────────── */}
       <div className="border-b border-border/40 pb-5">
         <span className="inline-flex items-center gap-1.5 rounded-full bg-primary/10 px-3 py-1 text-xs font-semibold text-primary">

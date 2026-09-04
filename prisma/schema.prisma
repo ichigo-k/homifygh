@@ -134,6 +134,9 @@ model Provider {
   workingDays Int[] @default([1, 2, 3, 4, 5, 6])
   workStart String @default("08:00")
   workEnd String @default("18:00")
+  breakStart String?
+  breakEnd String?
+  bufferMinutes Int @default(0)
   unavailableDates String[] @default([])
   acceptsWhatsApp Boolean @default(false)
   createdAt DateTime @default(now())
@@ -166,6 +169,8 @@ model PortfolioImage {
   id String @id @default(cuid())
   providerId String
   imageUrl String
+  beforeImageUrl String?
+  category String?
   caption String?
   sortOrder Int @default(0)
   createdAt DateTime @default(now())

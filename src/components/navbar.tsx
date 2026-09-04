@@ -48,8 +48,15 @@ function homeLabelHref(user: SessionUser): {
   }
 }
 
-/** Routes that render their own app shell — the marketing navbar is hidden here. */
-const APP_PREFIXES = ["/search", "/bookings", "/account", "/onboarding", "/provider", "/pros", "/admin"]
+// Routes that render their own app shell (AppShell / admin / provider) — the
+// marketing navbar is hidden here so the brand header never appears twice.
+// IMPORTANT: every route wrapped by AppShell (the whole `(app)` route group)
+// must be listed, otherwise that page shows two Homify GH headers.
+const APP_PREFIXES = [
+  "/search", "/bookings", "/account", "/pros", "/saved", "/wallet",
+  "/complaints", "/settings", "/more", "/help", "/legal",
+  "/onboarding", "/provider", "/admin",
+]
 
 const roleLabels: Record<string, string> = {
   ADMIN: "Admin",

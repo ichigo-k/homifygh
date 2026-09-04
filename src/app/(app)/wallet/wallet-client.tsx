@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useTransition } from "react"
-import { ArrowDownLeft, ArrowUpRight, Loader2, Plus, Wallet } from "lucide-react"
+import { ArrowDownLeft, ArrowUpRight, Clock, Loader2, Lock, Plus, RotateCcw, Wallet, CheckCircle2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { depositToWallet } from "./actions"
 
@@ -9,7 +9,23 @@ export type WalletTxn = { id: string; amount: number; type: "CREDIT" | "DEBIT"; 
 
 const QUICK = [50, 100, 200, 500]
 
-export function WalletClient({ balance, transactions }: { balance: number; transactions: WalletTxn[] }) {
+const cedis = (n: number) => `GH₵${n.toLocaleString(undefined, { maximumFractionDigits: 2 })}`
+
+export function WalletClient({
+  balance,
+  held,
+  inReview,
+  spent,
+  refunded,
+  transactions,
+}: {
+  balance: number
+  held: number
+  inReview: number
+  spent: number
+  refunded: number
+  transactions: WalletTxn[]
+}) {
   const [amount, setAmount] = useState("")
   const [message, setMessage] = useState("")
   const [error, setError] = useState("")
@@ -27,12 +43,31 @@ export function WalletClient({ balance, transactions }: { balance: number; trans
   }
 
   return (
-    <div className="mt-6 space-y-5">
-      <div className="rounded-3xl border border-primary/20 bg-gradient-to-br from-primary/10 to-primary/5 p-6">
+    <div className="mt-5 space-y-4">
+      {/* Available balance — the headline number the customer can act on now. */}
+      <div className="rounded-3xl border border-primary/20 bg-gradient-to-br from-primary/10 to-primary/5 p-5 sm:p-6">
         <div className="flex items-center gap-2 text-sm font-semibold text-primary">
           <Wallet className="h-4 w-4" /> Available balance
         </div>
-        <p className="mt-2 text-4xl font-extrabold">GH₵{balance.toLocaleString()}</p>
+        <p className="mt-1.5 text-3xl font-extrabold sm:text-4xl">{cedis(balance)}</p>
+        <p className="mt-1 text-xs text-muted-foreground">Ready to spend on a booking or withdraw.</p>
+      </div>
+
+      {/* Where the rest of your money is — held, spent, refunded, kept separate. */}
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+        <MoneyTile icon={Lock} tone="amber" label="Held for bookings" value={cedis(held)} hint="Reserved for active jobs" />
+        <MoneyTile icon={Clock} tone="sky" label="Under review" value={cedis(inReview)} hint="On disputed jobs" />
+        <MoneyTile icon={CheckCircle2} tone="emerald" label="Spent" value={cedis(spent)} hint="Paid for completed jobs" />
+        <MoneyTile icon={RotateCcw} tone="violet" label="Refunded" value={cedis(refunded)} hint="Returned to your wallet" />
+      </div>
+
+      {/* Plain-language explainer so customers always know what happens next. */}
+      <div className="rounded-2xl border border-border bg-card p-4 text-xs leading-relaxed text-muted-foreground">
+        <p className="mb-1 text-sm font-bold text-foreground">How your money moves</p>
+        When you book, the agreed amount is <strong className="text-foreground">held</strong> from your available balance so the pro
+        knows you&apos;re committed — it isn&apos;t paid out yet. If the job is completed it&apos;s released to the pro and shown as
+        <strong className="text-foreground"> spent</strong>. If you cancel before it starts, or a dispute is resolved in your favour, it&apos;s
+        <strong className="text-foreground"> refunded</strong> straight back to your available balance.
       </div>
 
       <div className="rounded-3xl border border-border bg-card p-5">
@@ -80,6 +115,38 @@ export function WalletClient({ balance, transactions }: { balance: number; trans
           <p className="mt-3 text-sm text-muted-foreground">No transactions yet. Add funds to get started.</p>
         )}
       </div>
+    </div>
+  )
+}
+
+const TONES: Record<string, string> = {
+  amber: "bg-amber-500/10 text-amber-600",
+  sky: "bg-sky-500/10 text-sky-600",
+  emerald: "bg-emerald-500/10 text-emerald-600",
+  violet: "bg-violet-500/10 text-violet-600",
+}
+
+function MoneyTile({
+  icon: Icon,
+  tone,
+  label,
+  value,
+  hint,
+}: {
+  icon: typeof Wallet
+  tone: keyof typeof TONES | string
+  label: string
+  value: string
+  hint: string
+}) {
+  return (
+    <div className="rounded-2xl border border-border bg-card p-3.5">
+      <span className={`flex h-8 w-8 items-center justify-center rounded-lg ${TONES[tone] ?? TONES.amber}`}>
+        <Icon className="h-4 w-4" />
+      </span>
+      <p className="mt-2 text-lg font-extrabold leading-tight">{value}</p>
+      <p className="text-xs font-semibold">{label}</p>
+      <p className="text-[11px] text-muted-foreground">{hint}</p>
     </div>
   )
 }

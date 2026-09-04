@@ -130,9 +130,27 @@ export default async function ProviderProfilePage({ params }: { params: Promise<
                   {provider.portfolio.map((item) => (
                     <div key={item.id} className="overflow-hidden rounded-2xl border border-border">
                       <div className="relative aspect-square">
-                        <Image src={item.imageUrl} alt={item.caption ?? "Completed work"} fill sizes="260px" className="object-cover" />
+                        {item.beforeImageUrl ? (
+                          <div className="grid h-full grid-cols-2">
+                            <div className="relative">
+                              <Image src={item.beforeImageUrl} alt="Before" fill sizes="130px" className="object-cover" />
+                              <span className="absolute left-1 top-1 rounded bg-black/60 px-1.5 py-0.5 text-[9px] font-bold text-white">BEFORE</span>
+                            </div>
+                            <div className="relative border-l border-white/40">
+                              <Image src={item.imageUrl} alt="After" fill sizes="130px" className="object-cover" />
+                              <span className="absolute right-1 top-1 rounded bg-primary px-1.5 py-0.5 text-[9px] font-bold text-primary-foreground">AFTER</span>
+                            </div>
+                          </div>
+                        ) : (
+                          <Image src={item.imageUrl} alt={item.caption ?? "Completed work"} fill sizes="260px" className="object-cover" />
+                        )}
                       </div>
-                      {item.caption && <p className="p-2 text-xs text-muted-foreground">{item.caption}</p>}
+                      {(item.category || item.caption) && (
+                        <div className="p-2">
+                          {item.category && <span className="inline-block rounded-full bg-accent px-2 py-0.5 text-[10px] font-bold text-primary">{item.category}</span>}
+                          {item.caption && <p className="mt-1 text-xs text-muted-foreground">{item.caption}</p>}
+                        </div>
+                      )}
                     </div>
                   ))}
                 </div>
@@ -149,6 +167,11 @@ export default async function ProviderProfilePage({ params }: { params: Promise<
                   </span>
                 )}
               </div>
+              {provider.totalReviews === 0 && (
+                <p className="mt-4 rounded-2xl bg-muted/30 p-4 text-sm text-muted-foreground">
+                  No reviews yet — this pro is new to Homify. Be the first to book and leave a verified review.
+                </p>
+              )}
               <div className="mt-4 grid gap-3 sm:grid-cols-2">
                 {provider.reviews.map((review) => (
                   <article key={review.id} className="rounded-2xl bg-muted/30 p-4">
