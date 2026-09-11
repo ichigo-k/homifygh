@@ -2,6 +2,7 @@
 
 import { useState, useTransition } from "react"
 import { useRouter } from "next/navigation"
+import Link from "next/link"
 import {
   User,
   Phone,
@@ -16,6 +17,8 @@ import {
   Sun,
   Moon,
   Monitor,
+  ChevronRight,
+  Trash2,
 } from "lucide-react"
 import { Field } from "@/components/auth/field"
 import { Button } from "@/components/ui/button"
@@ -36,6 +39,7 @@ const TABS = [
   { key: "profile", label: "Profile", icon: UserCog },
   { key: "security", label: "Security", icon: ShieldCheck },
   { key: "settings", label: "Settings", icon: Sun },
+  { key: "privacy", label: "Privacy", icon: ShieldCheck },
 ] as const
 
 export function AccountClient({ profile }: { profile: Profile }) {
@@ -56,9 +60,8 @@ export function AccountClient({ profile }: { profile: Profile }) {
             <button
               key={t.key}
               onClick={() => setTab(t.key)}
-              className={`flex items-center gap-1.5 rounded-lg px-3.5 py-2 text-sm font-medium transition-all ${
-                active ? "bg-card text-foreground shadow-[var(--shadow-sm)]" : "text-muted-foreground hover:text-foreground"
-              }`}
+              className={`flex items-center gap-1.5 rounded-lg px-3.5 py-2 text-sm font-medium transition-all ${active ? "bg-card text-foreground shadow-[var(--shadow-sm)]" : "text-muted-foreground hover:text-foreground"
+                }`}
             >
               <t.icon className="h-4 w-4" />
               {t.label}
@@ -71,6 +74,7 @@ export function AccountClient({ profile }: { profile: Profile }) {
         {tab === "profile" && <ProfileTab profile={profile} />}
         {tab === "security" && <SecurityTab />}
         {tab === "settings" && <SettingsTab />}
+        {tab === "privacy" && <PrivacyTab />}
       </div>
     </div>
   )
@@ -90,9 +94,8 @@ function Notice({ kind, children }: { kind: "ok" | "error"; children: React.Reac
   const ok = kind === "ok"
   return (
     <div
-      className={`flex items-start gap-2 rounded-xl px-3.5 py-3 text-sm ${
-        ok ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400" : "bg-destructive/10 text-destructive"
-      }`}
+      className={`flex items-start gap-2 rounded-xl px-3.5 py-3 text-sm ${ok ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400" : "bg-destructive/10 text-destructive"
+        }`}
     >
       {ok ? <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0" /> : <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />}
       <span>{children}</span>
@@ -221,11 +224,10 @@ function SettingsTab() {
             <button
               key={key}
               onClick={() => setTheme(key)}
-              className={`flex flex-col items-center gap-2 rounded-xl border p-4 text-sm font-medium transition-all ${
-                active
-                  ? "border-primary bg-accent text-primary shadow-[var(--shadow-sm)]"
-                  : "border-border bg-card text-muted-foreground hover:border-primary/40 hover:text-foreground"
-              }`}
+              className={`flex flex-col items-center gap-2 rounded-xl border p-4 text-sm font-medium transition-all ${active
+                ? "border-primary bg-accent text-primary shadow-[var(--shadow-sm)]"
+                : "border-border bg-card text-muted-foreground hover:border-primary/40 hover:text-foreground"
+                }`}
             >
               <Icon className="h-5 w-5" />
               {label}
@@ -233,6 +235,23 @@ function SettingsTab() {
           )
         })}
       </div>
+    </Card>
+  )
+}
+
+function PrivacyTab() {
+  return (
+    <Card title="Privacy & data" desc="Manage how your data is used and stored.">
+      <Link
+        href="/account/privacy"
+        className="flex items-center justify-between rounded-xl border border-destructive/30 bg-destructive/5 px-4 py-3.5 text-sm font-medium text-destructive transition-colors hover:bg-destructive/10"
+      >
+        <span className="flex items-center gap-2">
+          <Trash2 className="h-4 w-4" />
+          Delete account permanently
+        </span>
+        <ChevronRight className="h-4 w-4 opacity-60" />
+      </Link>
     </Card>
   )
 }
